@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DocBrief.API/DocBrief.API.csproj" />
+    <Project Path="src/DocBrief.Application/DocBrief.Application.csproj" />
+    <Project Path="src/DocBrief.Domain/DocBrief.Domain.csproj" />
+    <Project Path="src/DocBrief.Infrastructure/DocBrief.Infrastructure.csproj" />
+  </Folder>
+</Solution>

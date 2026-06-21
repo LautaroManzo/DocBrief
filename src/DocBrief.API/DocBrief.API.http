@@ -1,0 +1,6 @@
+@DocBrief.API_HostAddress = http://localhost:5158
+
+GET {{DocBrief.API_HostAddress}}/api/summary
+Accept: application/json
+
+###
