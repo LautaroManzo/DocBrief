@@ -5,4 +5,7 @@
     <Project Path="src/DocBrief.Domain/DocBrief.Domain.csproj" />
     <Project Path="src/DocBrief.Infrastructure/DocBrief.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DocBrief.TestConsole/DocBrief.TestConsole.csproj" />
+  </Folder>
 </Solution>
