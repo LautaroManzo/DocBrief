@@ -1,23 +1,38 @@
+using DocBrief.Application.Interfaces;
+using DocBrief.Infrastructure.AI;
+using DocBrief.Infrastructure.Parsers;
+using DocBrief.Infrastructure.Persistence;
+using Microsoft.SemanticKernel;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Semantic Kernel + Ollama (desarrollo local) / Gemini (produccion)
+builder.Services.AddKernel();
+
+#pragma warning disable SKEXP0070
+builder.Services.AddOllamaChatCompletion("llama3.2", new Uri("http://localhost:11434"));
+#pragma warning restore SKEXP0070
+
+// Servicios de aplicacion
+builder.Services.AddScoped<ISummaryService, SemanticKernelSummaryService>();
+builder.Services.AddScoped<IDocumentParser, PdfParser>();
+builder.Services.AddSingleton<ISummaryRepository, InMemorySummaryRepository>();
+
+// MediatR
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(DocBrief.Application.Interfaces.ISummaryService).Assembly));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

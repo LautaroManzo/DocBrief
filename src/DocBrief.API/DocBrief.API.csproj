@@ -9,10 +9,13 @@
   <ItemGroup>
     <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.77.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Google" Version="1.77.0-alpha" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DocBrief.Application\DocBrief.Application.csproj" />
+    <ProjectReference Include="..\DocBrief.Infrastructure\DocBrief.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
