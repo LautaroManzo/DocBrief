@@ -1,7 +1,6 @@
 using DocBrief.Application.Interfaces;
 using DocBrief.Infrastructure.AI;
 using DocBrief.Infrastructure.Parsers;
-using DocBrief.Infrastructure.Persistence;
 using Microsoft.SemanticKernel;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,7 +18,6 @@ builder.Services.AddOllamaChatCompletion("llama3.2", new Uri("http://localhost:1
 // Servicios de aplicacion
 builder.Services.AddScoped<ISummaryService, SemanticKernelSummaryService>();
 builder.Services.AddScoped<IDocumentParser, PdfParser>();
-builder.Services.AddSingleton<ISummaryRepository, InMemorySummaryRepository>();
 
 // MediatR
 builder.Services.AddMediatR(cfg =>
