@@ -8,4 +8,15 @@
   <Folder Name="/tests/">
     <Project Path="tests/DocBrief.TestConsole/DocBrief.TestConsole.csproj" />
   </Folder>
+  <Folder Name="/web/">
+    <File Path="web/src/App.tsx" />
+    <File Path="web/src/main.tsx" />
+    <File Path="web/src/index.css" />
+    <File Path="web/src/components/SummaryForm.tsx" />
+    <File Path="web/src/components/SummaryResult.tsx" />
+    <File Path="web/src/services/api.ts" />
+    <File Path="web/package.json" />
+    <File Path="web/vite.config.ts" />
+    <File Path="web/.env" />
+  </Folder>
 </Solution>
