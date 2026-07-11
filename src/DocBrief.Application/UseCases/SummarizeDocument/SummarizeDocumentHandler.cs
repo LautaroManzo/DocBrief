@@ -5,12 +5,12 @@ namespace DocBrief.Application.UseCases.SummarizeDocument;
 
 public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand, SummarizeDocumentResult>
 {
-    private readonly IDocumentParser _pdfParser;
+    private readonly IDocumentParserResolver _parserResolver;
     private readonly ISummaryService _summaryService;
 
-    public SummarizeDocumentHandler(IDocumentParser pdfParser, ISummaryService summaryService)
+    public SummarizeDocumentHandler(IDocumentParserResolver parserResolver, ISummaryService summaryService)
     {
-        _pdfParser = pdfParser;
+        _parserResolver = parserResolver;
         _summaryService = summaryService;
     }
 
@@ -18,13 +18,14 @@ public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand
     {
         var extractedText = request.ContentType switch
         {
-            "pdf" => await _pdfParser.ParseAsync(request.File!),
+            "file" => await _parserResolver.Resolve(request.File!.FileName).ParseAsync(request.File!),
             "text" => request.Text!,
             _ => throw new ArgumentException($"Unsupported content type: {request.ContentType}")
         };
 
-        var summaryContent = await _summaryService.SummarizeAsync(extractedText);
+        var summaryContent = await _summaryService.SummarizeAsync(extractedText, request.SummaryLength, request.OutputLanguage);
+        var originalWordCount = extractedText.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
 
-        return new SummarizeDocumentResult(summaryContent);
+        return new SummarizeDocumentResult(summaryContent, originalWordCount);
     }
 }

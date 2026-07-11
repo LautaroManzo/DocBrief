@@ -1,25 +1,42 @@
+import type { OutputLanguage, SummaryLength } from "../types";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
-export async function summarizeText(text: string): Promise<string> {
+interface SummaryOptions {
+  summaryLength: SummaryLength;
+  outputLanguage: OutputLanguage;
+}
+
+export interface SummaryResponse {
+  summary: string;
+  originalWordCount: number;
+}
+
+export async function summarizeText(text: string, options: SummaryOptions): Promise<SummaryResponse> {
   const response = await fetch(`${API_URL}/api/summary/text`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({
+      text,
+      summaryLength: options.summaryLength,
+      outputLanguage: options.outputLanguage,
+    }),
   });
 
   if (!response.ok) {
     throw new Error("No se pudo generar el resumen.");
   }
 
-  const data = await response.json();
-  return data.summary;
+  return response.json();
 }
 
-export async function summarizePdf(file: File): Promise<string> {
+export async function summarizeFile(file: File, options: SummaryOptions): Promise<SummaryResponse> {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("summaryLength", options.summaryLength);
+  formData.append("outputLanguage", options.outputLanguage);
 
-  const response = await fetch(`${API_URL}/api/summary/pdf`, {
+  const response = await fetch(`${API_URL}/api/summary/file`, {
     method: "POST",
     body: formData,
   });
@@ -28,6 +45,5 @@ export async function summarizePdf(file: File): Promise<string> {
     throw new Error("No se pudo generar el resumen.");
   }
 
-  const data = await response.json();
-  return data.summary;
+  return response.json();
 }

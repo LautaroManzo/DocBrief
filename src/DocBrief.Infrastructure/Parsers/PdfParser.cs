@@ -7,6 +7,8 @@ namespace DocBrief.Infrastructure.Parsers;
 
 public class PdfParser : IDocumentParser
 {
+    public IReadOnlyCollection<string> SupportedExtensions { get; } = new[] { ".pdf" };
+
     public async Task<string> ParseAsync(IFormFile file)
     {
         using var stream = new MemoryStream();
