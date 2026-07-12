@@ -1,43 +1,69 @@
 # DocBrief API
 
 ## Qué hace este proyecto
-API REST en .NET que resume PDFs y texto plano usando IA via Semantic Kernel.
-No persiste nada — cada request genera el resumen y lo devuelve, sin historial.
+API REST en .NET que resume PDFs, Word (.docx) y texto plano usando IA via Semantic
+Kernel, con un frontend en React. El usuario elige largo del resumen (corto/medio/
+detallado) e idioma de salida (es/en). No persiste nada — cada request genera el
+resumen y lo devuelve, sin historial.
 
 ## Arquitectura
-Clean Architecture: Domain / Application / Infrastructure / API.
+Backend: Clean Architecture (Domain / Application / Infrastructure / API).
 Las dependencias apuntan hacia adentro. Infrastructure nunca en Domain.
+Frontend: proyecto React separado en `web/`, fuera de `src/` porque es otro
+ecosistema (Node/npm) — consume la API via HTTP.
 
 ## Convenciones
 - Toda lógica de negocio va en Application/UseCases
 - Los handlers usan MediatR (IRequestHandler)
 - Las interfaces de servicios externos van en Application/Interfaces
+- Los parsers de documentos se resuelven por extensión via IDocumentParserResolver
 - Nombres en inglés, comentarios en español
 - Commits en español, sin Co-Authored-By
 
 ## Stack
+### Backend
 - .NET 10, C# 13
 - Semantic Kernel para IA (Ollama local en desarrollo, Gemini en producción)
-- PdfPig para parsear PDFs
+- PdfPig para parsear PDFs, DocumentFormat.OpenXml para Word
 - MediatR para CQRS
+- Swashbuckle (Swagger) para documentación interactiva
 - Sin base de datos
+
+### Frontend (web/)
+- React + Vite + TypeScript
+- Sin librerías de UI — componentes y CSS propios (paleta oklch, fuentes Nunito/Inter)
+- jsPDF para exportar el resumen a PDF con formato (títulos, listas, negritas)
+- Dark/light mode con toggle propio (localStorage)
+- Layout responsive (mobile-first en breakpoints clave)
 
 ## Estructura
 ```
 src/
   DocBrief.Domain/          → Vacío por ahora (sin entidades persistentes)
   DocBrief.Application/     → Interfaces, UseCases, Commands/Handlers
-  DocBrief.Infrastructure/  → Parsers (PdfPig), IA (Semantic Kernel)
-  DocBrief.API/             → Controllers, Program.cs
+  DocBrief.Infrastructure/  → Parsers (PdfPig, OpenXml), IA (Semantic Kernel)
+  DocBrief.API/              → Controllers, Program.cs, Swagger
 tests/
   DocBrief.TestConsole/     → Test manual de parsers
+web/
+  src/components/           → IdleView, ProcessingView, DoneView, ErrorView
+                               + Select, SummaryContent, ThemeToggle, ApiDocsLink
+  src/services/api.ts       → Llamadas HTTP a la API
+  src/utils/                → markdown.ts (parser compartido), download.ts (jsPDF)
 ```
 
 ## Comandos útiles
+### Backend
 ```
 dotnet build                              # compilar
-dotnet run --project src/DocBrief.API     # levantar la API
+dotnet run --project src/DocBrief.API     # levantar la API (Swagger en /swagger)
 dotnet test                               # tests
+```
+
+### Frontend
+```
+cd web
+npm run dev                               # levantar en localhost:5173
 ```
 
 ## Ollama (desarrollo local)
