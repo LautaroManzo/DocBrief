@@ -27,7 +27,7 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins("http://localhost:5173")
+        policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
@@ -35,15 +35,29 @@ builder.Services.AddCors(options =>
 // Semantic Kernel + Ollama (desarrollo local) / Gemini (produccion)
 builder.Services.AddKernel();
 
-var ollamaHttpClient = new HttpClient
+var aiProvider = builder.Configuration["AI:Provider"] ?? "Ollama";
+
+if (aiProvider == "Gemini")
 {
-    BaseAddress = new Uri("http://localhost:11434"),
-    Timeout = TimeSpan.FromMinutes(5)
-};
+    var geminiApiKey = builder.Configuration["Gemini:ApiKey"]
+        ?? throw new InvalidOperationException("Falta la API key de Gemini en la configuracion.");
 
 #pragma warning disable SKEXP0070
-builder.Services.AddOllamaChatCompletion(modelId: "llama3.2", httpClient: ollamaHttpClient);
+    builder.Services.AddGoogleAIGeminiChatCompletion("gemini-flash-lite-latest", geminiApiKey);
 #pragma warning restore SKEXP0070
+}
+else
+{
+    var ollamaHttpClient = new HttpClient
+    {
+        BaseAddress = new Uri("http://localhost:11434"),
+        Timeout = TimeSpan.FromMinutes(5)
+    };
+
+#pragma warning disable SKEXP0070
+    builder.Services.AddOllamaChatCompletion(modelId: "llama3.2", httpClient: ollamaHttpClient);
+#pragma warning restore SKEXP0070
+}
 
 // Servicios de aplicacion
 builder.Services.AddScoped<ISummaryService, SemanticKernelSummaryService>();
