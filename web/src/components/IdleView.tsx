@@ -31,6 +31,7 @@ interface IdleViewProps {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_EXTENSIONS = [".pdf", ".docx"];
+const MAX_TEXT_LENGTH = 10_000;
 
 export function IdleView({
   inputMode,
@@ -72,11 +73,11 @@ export function IdleView({
         <button className={inputMode === "file" ? "active" : ""} onClick={() => onInputModeChange("file")}>
           Subir archivo
         </button>
-        <button className={inputMode === "text" ? "active" : ""} onClick={() => onInputModeChange("text")}>
-          Pegar texto
-        </button>
         <button className={inputMode === "url" ? "active" : ""} onClick={() => onInputModeChange("url")}>
           Pegar link
+        </button>
+        <button className={inputMode === "text" ? "active" : ""} onClick={() => onInputModeChange("text")}>
+          Pegar texto
         </button>
       </div>
 
@@ -127,12 +128,16 @@ export function IdleView({
       )}
 
       {inputMode === "text" && (
-        <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", gap: 6 }}>
           <textarea
             placeholder="Pegá o escribí el texto que querés resumir…"
             value={pastedText}
+            maxLength={MAX_TEXT_LENGTH}
             onChange={(e) => onPastedTextChange(e.target.value)}
           />
+          <span className="char-counter">
+            {pastedText.length.toLocaleString("es")} / {MAX_TEXT_LENGTH.toLocaleString("es")}
+          </span>
           <button className="btn-primary" style={{ alignSelf: "center" }} onClick={onSubmitText}>
             Resumir texto
           </button>
@@ -157,4 +162,4 @@ export function IdleView({
   );
 }
 
-export { MAX_FILE_SIZE, ACCEPTED_EXTENSIONS };
+export { MAX_FILE_SIZE, ACCEPTED_EXTENSIONS, MAX_TEXT_LENGTH };

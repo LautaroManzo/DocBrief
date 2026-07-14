@@ -21,13 +21,22 @@ public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand
 
     public async Task<SummarizeDocumentResult> Handle(SummarizeDocumentCommand request, CancellationToken cancellationToken)
     {
-        var extractedText = request.ContentType switch
+        string extractedText;
+
+        try
         {
-            "file" => await _parserResolver.Resolve(request.File!.FileName).ParseAsync(request.File!),
-            "text" => request.Text!,
-            "url" => await _urlContentFetcher.FetchTextAsync(request.Url!),
-            _ => throw new ArgumentException($"Unsupported content type: {request.ContentType}")
-        };
+            extractedText = request.ContentType switch
+            {
+                "file" => await _parserResolver.Resolve(request.File!.FileName).ParseAsync(request.File!),
+                "text" => request.Text!,
+                "url" => await _urlContentFetcher.FetchTextAsync(request.Url!),
+                _ => throw new ArgumentException($"Unsupported content type: {request.ContentType}")
+            };
+        }
+        catch (Exception ex) when (request.ContentType == "file" && ex is not ArgumentException)
+        {
+            throw new ArgumentException("No pudimos leer ese archivo. Verificá que no este daniado o corrupto.", ex);
+        }
 
         var summaryContent = await _summaryService.SummarizeAsync(extractedText, request.SummaryLength, request.OutputLanguage);
         var originalWordCount = extractedText.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;

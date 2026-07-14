@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { ApiDocsLink } from "./components/ApiDocsLink";
 import { DoneView } from "./components/DoneView";
 import { ErrorView } from "./components/ErrorView";
-import { ACCEPTED_EXTENSIONS, IdleView, MAX_FILE_SIZE } from "./components/IdleView";
+import { ACCEPTED_EXTENSIONS, IdleView, MAX_FILE_SIZE, MAX_TEXT_LENGTH } from "./components/IdleView";
 import { ProcessingView } from "./components/ProcessingView";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { summarizeFile, summarizeText, summarizeUrl } from "./services/api";
@@ -76,6 +76,12 @@ function App() {
   async function handleSubmitText() {
     if (!pastedText.trim()) {
       setErrorMessage("No encontramos texto para resumir. Pegá o escribí contenido antes de continuar.");
+      setPhase("error");
+      return;
+    }
+
+    if (pastedText.length > MAX_TEXT_LENGTH) {
+      setErrorMessage(`El texto supera el límite de ${MAX_TEXT_LENGTH.toLocaleString("es")} caracteres.`);
       setPhase("error");
       return;
     }

@@ -57,42 +57,21 @@ public class UrlContentFetcher : IUrlContentFetcher
             throw new ArgumentException("La URL no es valida. Debe empezar con http:// o https://");
         }
 
-        if (IsBlockedHost(uri.Host))
-        {
-            throw new ArgumentException("Esa URL no esta permitida.");
-        }
-
         return uri;
     }
 
-    private static bool IsBlockedHost(string host)
+    /// <summary>
+    /// Valida que una IP resuelta no apunte a una red privada, loopback o link-local.
+    /// Se usa en el momento exacto de conectar (ver <see cref="SsrfSafeConnectHandler"/>)
+    /// para evitar bypass por redirects o DNS rebinding.
+    /// </summary>
+    public static bool IsPrivateOrLoopback(IPAddress ip)
     {
-        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        IPAddress[] addresses;
-
-        if (IPAddress.TryParse(host, out var ip))
+        if (ip.IsIPv4MappedToIPv6)
         {
-            addresses = new[] { ip };
-        }
-        else
-        {
-            try
-            {
-                addresses = Dns.GetHostAddresses(host);
-            }
-            catch
-            {
-                return true;
-            }
+            ip = ip.MapToIPv4();
         }
 
-        return addresses.Length == 0 || addresses.Any(IsPrivateOrLoopback);
-    }
-
-    private static bool IsPrivateOrLoopback(IPAddress ip)
-    {
         if (IPAddress.IsLoopback(ip))
             return true;
 
@@ -100,6 +79,7 @@ public class UrlContentFetcher : IUrlContentFetcher
         {
             var bytes = ip.GetAddressBytes();
 
+            if (bytes[0] == 0) return true;
             if (bytes[0] == 10) return true;
             if (bytes[0] == 172 && bytes[1] is >= 16 and <= 31) return true;
             if (bytes[0] == 192 && bytes[1] == 168) return true;

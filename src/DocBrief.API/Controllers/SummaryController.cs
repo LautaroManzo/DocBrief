@@ -13,6 +13,7 @@ namespace DocBrief.API.Controllers;
 public class SummaryController : ControllerBase
 {
     private const long MaxFileSizeBytes = 10 * 1024 * 1024;
+    private const int MaxTextLength = 10_000;
     private static readonly string[] SupportedExtensions = { ".pdf", ".docx" };
 
     private readonly IMediator _mediator;
@@ -47,10 +48,17 @@ public class SummaryController : ControllerBase
         if (file.Length > MaxFileSizeBytes)
             return BadRequest("El archivo supera el limite de 10 MB.");
 
-        var command = new SummarizeDocumentCommand(file, null, null, "file", summaryLength, outputLanguage);
-        var result = await _mediator.Send(command);
+        try
+        {
+            var command = new SummarizeDocumentCommand(file, null, null, "file", summaryLength, outputLanguage);
+            var result = await _mediator.Send(command);
 
-        return Ok(result);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     /// <summary>
@@ -58,7 +66,7 @@ public class SummaryController : ControllerBase
     /// </summary>
     /// <param name="request">Texto a resumir junto con las opciones de largo e idioma.</param>
     /// <response code="200">Resumen generado correctamente.</response>
-    /// <response code="400">No se envio texto para resumir.</response>
+    /// <response code="400">No se envio texto, o supera los 10.000 caracteres.</response>
     [HttpPost("text")]
     [ProducesResponseType(typeof(SummarizeDocumentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -66,6 +74,9 @@ public class SummaryController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Text))
             return BadRequest("Se requiere texto para resumir.");
+
+        if (request.Text.Length > MaxTextLength)
+            return BadRequest($"El texto supera el limite de {MaxTextLength} caracteres.");
 
         var command = new SummarizeDocumentCommand(
             null,

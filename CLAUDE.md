@@ -30,7 +30,12 @@ ecosistema (Node/npm) — consume la API via HTTP.
   ("Ollama" para desarrollo local con llama3.2, "Gemini" con gemini-flash-lite-latest)
 - PdfPig para parsear PDFs, DocumentFormat.OpenXml para Word
 - HtmlAgilityPack para extraer texto de paginas web (IUrlContentFetcher).
-  Bloquea localhost/IPs privadas/link-local para evitar SSRF
+  Proteccion SSRF real: SsrfSafeHttpClientHandler valida la IP en el
+  ConnectCallback (momento exacto de conectar), no antes — asi cubre tanto
+  redirects (3xx a IPs internas) como DNS rebinding, no solo la URL inicial
+- Limite de texto pegado: 10.000 caracteres (validado en front y back)
+- Errores de parseo (PDF/DOCX corruptos) devuelven 400 con mensaje claro,
+  no 500 con stack trace
 - MediatR para CQRS
 - Swashbuckle (Swagger) para documentación interactiva — habilitado siempre,
   incluso en producción (link "API docs" visible en el frontend)

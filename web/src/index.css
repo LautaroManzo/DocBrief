@@ -306,6 +306,13 @@ textarea {
   outline: none;
 }
 
+.char-counter {
+  align-self: flex-end;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  color: var(--text-secondary-2);
+}
+
 .url-input {
   width: 100%;
   max-width: 560px;

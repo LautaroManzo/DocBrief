@@ -121,7 +121,8 @@ builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("DocBrief/1.0 (+https://github.com/LautaroManzo/DocBrief)");
-});
+})
+.ConfigurePrimaryHttpMessageHandler(SsrfSafeHttpClientHandler.Create);
 
 // MediatR
 builder.Services.AddMediatR(cfg =>
