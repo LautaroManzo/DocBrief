@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using DocBrief.Application.Interfaces;
 using DocBrief.Infrastructure.AI;
 using DocBrief.Infrastructure.Parsers;
+using DocBrief.Infrastructure.Web;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.SemanticKernel;
 
@@ -115,6 +116,12 @@ builder.Services.AddScoped<ISummaryService, SemanticKernelSummaryService>();
 builder.Services.AddScoped<IDocumentParser, PdfParser>();
 builder.Services.AddScoped<IDocumentParser, DocxParser>();
 builder.Services.AddScoped<IDocumentParserResolver, DocumentParserResolver>();
+
+builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("DocBrief/1.0 (+https://github.com/LautaroManzo/DocBrief)");
+});
 
 // MediatR
 builder.Services.AddMediatR(cfg =>

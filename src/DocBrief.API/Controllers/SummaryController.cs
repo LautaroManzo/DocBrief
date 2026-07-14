@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DocBrief.API.Controllers;
 
 /// <summary>
-/// Genera resúmenes de documentos (PDF, Word) o texto plano usando IA.
+/// Genera resúmenes de documentos (PDF, Word), texto plano o paginas web usando IA.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -47,7 +47,7 @@ public class SummaryController : ControllerBase
         if (file.Length > MaxFileSizeBytes)
             return BadRequest("El archivo supera el limite de 10 MB.");
 
-        var command = new SummarizeDocumentCommand(file, null, "file", summaryLength, outputLanguage);
+        var command = new SummarizeDocumentCommand(file, null, null, "file", summaryLength, outputLanguage);
         var result = await _mediator.Send(command);
 
         return Ok(result);
@@ -70,6 +70,7 @@ public class SummaryController : ControllerBase
         var command = new SummarizeDocumentCommand(
             null,
             request.Text,
+            null,
             "text",
             request.SummaryLength ?? "medio",
             request.OutputLanguage ?? "es");
@@ -77,6 +78,44 @@ public class SummaryController : ControllerBase
         var result = await _mediator.Send(command);
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Resume el contenido de una pagina web a partir de su URL.
+    /// </summary>
+    /// <param name="request">URL a resumir junto con las opciones de largo e idioma.</param>
+    /// <response code="200">Resumen generado correctamente.</response>
+    /// <response code="400">La URL no es valida, no esta permitida o no se pudo acceder a ella.</response>
+    [HttpPost("url")]
+    [ProducesResponseType(typeof(SummarizeDocumentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SummarizeUrl([FromBody] UrlRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Url))
+            return BadRequest("Se requiere una URL para resumir.");
+
+        try
+        {
+            var command = new SummarizeDocumentCommand(
+                null,
+                null,
+                request.Url,
+                "url",
+                request.SummaryLength ?? "medio",
+                request.OutputLanguage ?? "es");
+
+            var result = await _mediator.Send(command);
+
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (HttpRequestException)
+        {
+            return BadRequest("No se pudo acceder a esa URL.");
+        }
     }
 }
 
@@ -87,3 +126,11 @@ public class SummaryController : ControllerBase
 /// <param name="SummaryLength">Largo del resumen: "corto", "medio" o "detallado". Por defecto "medio".</param>
 /// <param name="OutputLanguage">Idioma del resumen: "es" o "en". Por defecto "es".</param>
 public record TextRequest(string Text, string? SummaryLength, string? OutputLanguage);
+
+/// <summary>
+/// Datos para resumir una pagina web.
+/// </summary>
+/// <param name="Url">URL de la pagina a resumir.</param>
+/// <param name="SummaryLength">Largo del resumen: "corto", "medio" o "detallado". Por defecto "medio".</param>
+/// <param name="OutputLanguage">Idioma del resumen: "es" o "en". Por defecto "es".</param>
+public record UrlRequest(string Url, string? SummaryLength, string? OutputLanguage);

@@ -22,8 +22,11 @@ interface IdleViewProps {
   onOutputLanguageChange: (value: OutputLanguage) => void;
   pastedText: string;
   onPastedTextChange: (value: string) => void;
+  pastedUrl: string;
+  onPastedUrlChange: (value: string) => void;
   onSubmitFile: (file: File) => void;
   onSubmitText: () => void;
+  onSubmitUrl: () => void;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -38,8 +41,11 @@ export function IdleView({
   onOutputLanguageChange,
   pastedText,
   onPastedTextChange,
+  pastedUrl,
+  onPastedUrlChange,
   onSubmitFile,
   onSubmitText,
+  onSubmitUrl,
 }: IdleViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -69,6 +75,9 @@ export function IdleView({
         <button className={inputMode === "text" ? "active" : ""} onClick={() => onInputModeChange("text")}>
           Pegar texto
         </button>
+        <button className={inputMode === "url" ? "active" : ""} onClick={() => onInputModeChange("url")}>
+          Pegar link
+        </button>
       </div>
 
       <div className="options-row">
@@ -90,7 +99,7 @@ export function IdleView({
         </div>
       </div>
 
-      {inputMode === "file" ? (
+      {inputMode === "file" && (
         <div
           className={`dropzone${isDragOver ? " dragover" : ""}`}
           onClick={() => fileInputRef.current?.click()}
@@ -115,7 +124,9 @@ export function IdleView({
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
         </div>
-      ) : (
+      )}
+
+      {inputMode === "text" && (
         <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", gap: 12 }}>
           <textarea
             placeholder="Pegá o escribí el texto que querés resumir…"
@@ -124,6 +135,21 @@ export function IdleView({
           />
           <button className="btn-primary" style={{ alignSelf: "center" }} onClick={onSubmitText}>
             Resumir texto
+          </button>
+        </div>
+      )}
+
+      {inputMode === "url" && (
+        <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", gap: 12 }}>
+          <input
+            type="url"
+            className="url-input"
+            placeholder="https://ejemplo.com/articulo"
+            value={pastedUrl}
+            onChange={(e) => onPastedUrlChange(e.target.value)}
+          />
+          <button className="btn-primary" style={{ alignSelf: "center" }} onClick={onSubmitUrl}>
+            Resumir link
           </button>
         </div>
       )}

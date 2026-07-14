@@ -6,11 +6,16 @@ namespace DocBrief.Application.UseCases.SummarizeDocument;
 public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand, SummarizeDocumentResult>
 {
     private readonly IDocumentParserResolver _parserResolver;
+    private readonly IUrlContentFetcher _urlContentFetcher;
     private readonly ISummaryService _summaryService;
 
-    public SummarizeDocumentHandler(IDocumentParserResolver parserResolver, ISummaryService summaryService)
+    public SummarizeDocumentHandler(
+        IDocumentParserResolver parserResolver,
+        IUrlContentFetcher urlContentFetcher,
+        ISummaryService summaryService)
     {
         _parserResolver = parserResolver;
+        _urlContentFetcher = urlContentFetcher;
         _summaryService = summaryService;
     }
 
@@ -20,6 +25,7 @@ public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand
         {
             "file" => await _parserResolver.Resolve(request.File!.FileName).ParseAsync(request.File!),
             "text" => request.Text!,
+            "url" => await _urlContentFetcher.FetchTextAsync(request.Url!),
             _ => throw new ArgumentException($"Unsupported content type: {request.ContentType}")
         };
 

@@ -6,6 +6,7 @@ namespace DocBrief.Application.UseCases.SummarizeDocument;
 public record SummarizeDocumentCommand(
     IFormFile? File,
     string? Text,
+    string? Url,
     string ContentType,
     string SummaryLength,
     string OutputLanguage) : IRequest<SummarizeDocumentResult>;

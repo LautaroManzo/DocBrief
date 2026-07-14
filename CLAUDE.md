@@ -1,10 +1,13 @@
 # DocBrief API
 
 ## Qué hace este proyecto
-API REST en .NET que resume PDFs, Word (.docx) y texto plano usando IA via Semantic
-Kernel, con un frontend en React. El usuario elige largo del resumen (corto/medio/
-detallado) e idioma de salida (es/en). No persiste nada — cada request genera el
-resumen y lo devuelve, sin historial.
+API REST en .NET que resume PDFs, Word (.docx), texto plano y paginas web (por URL)
+usando IA via Semantic Kernel, con un frontend en React. El usuario elige largo del
+resumen (corto/medio/detallado) e idioma de salida (es/en). No persiste nada — cada
+request genera el resumen y lo devuelve, sin historial.
+
+El repo/proyecto backend se llama **DocBrief**, pero el frontend se presenta al
+usuario como **"Te lo resumo"** (titulo de la pestana y branding visible).
 
 ## Arquitectura
 Backend: Clean Architecture (Domain / Application / Infrastructure / API).
@@ -26,6 +29,8 @@ ecosistema (Node/npm) — consume la API via HTTP.
 - Semantic Kernel para IA — proveedor configurable via `AI:Provider` en appsettings
   ("Ollama" para desarrollo local con llama3.2, "Gemini" con gemini-flash-lite-latest)
 - PdfPig para parsear PDFs, DocumentFormat.OpenXml para Word
+- HtmlAgilityPack para extraer texto de paginas web (IUrlContentFetcher).
+  Bloquea localhost/IPs privadas/link-local para evitar SSRF
 - MediatR para CQRS
 - Swashbuckle (Swagger) para documentación interactiva — habilitado siempre,
   incluso en producción (link "API docs" visible en el frontend)
@@ -47,7 +52,8 @@ ecosistema (Node/npm) — consume la API via HTTP.
 src/
   DocBrief.Domain/          → Vacío por ahora (sin entidades persistentes)
   DocBrief.Application/     → Interfaces, UseCases, Commands/Handlers
-  DocBrief.Infrastructure/  → Parsers (PdfPig, OpenXml), IA (Semantic Kernel)
+  DocBrief.Infrastructure/  → Parsers (PdfPig, OpenXml), Web (UrlContentFetcher),
+                               IA (Semantic Kernel)
   DocBrief.API/              → Controllers, Program.cs, Swagger
 tests/
   DocBrief.TestConsole/     → Test manual de parsers

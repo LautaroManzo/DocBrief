@@ -5,7 +5,7 @@ import { ErrorView } from "./components/ErrorView";
 import { ACCEPTED_EXTENSIONS, IdleView, MAX_FILE_SIZE } from "./components/IdleView";
 import { ProcessingView } from "./components/ProcessingView";
 import { ThemeToggle } from "./components/ThemeToggle";
-import { summarizeFile, summarizeText } from "./services/api";
+import { summarizeFile, summarizeText, summarizeUrl } from "./services/api";
 import type { InputMode, OutputLanguage, Phase, SummaryLength } from "./types";
 
 const WORDS_PER_MINUTE = 200;
@@ -16,6 +16,7 @@ function App() {
   const [summaryLength, setSummaryLength] = useState<SummaryLength>("medio");
   const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>("es");
   const [pastedText, setPastedText] = useState("");
+  const [pastedUrl, setPastedUrl] = useState("");
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -40,6 +41,12 @@ function App() {
     }
   }
 
+  function handleError(error: unknown) {
+    stopProgressAnimation();
+    setErrorMessage(error instanceof Error ? error.message : "Ocurrió un error al conectar con el servidor. Intentá nuevamente.");
+    setPhase("error");
+  }
+
   async function handleSubmitFile(file: File) {
     const extension = "." + file.name.split(".").pop()?.toLowerCase();
 
@@ -62,9 +69,7 @@ function App() {
       setOriginalWordCount(result.originalWordCount);
       setPhase("done");
     } catch (error) {
-      stopProgressAnimation();
-      setErrorMessage(error instanceof Error ? error.message : "Ocurrió un error al conectar con el servidor. Intentá nuevamente.");
-      setPhase("error");
+      handleError(error);
     }
   }
 
@@ -88,15 +93,38 @@ function App() {
       setOriginalWordCount(result.originalWordCount);
       setPhase("done");
     } catch (error) {
-      stopProgressAnimation();
-      setErrorMessage(error instanceof Error ? error.message : "Ocurrió un error al conectar con el servidor. Intentá nuevamente.");
+      handleError(error);
+    }
+  }
+
+  async function handleSubmitUrl() {
+    if (!pastedUrl.trim()) {
+      setErrorMessage("Pegá una URL valida antes de continuar.");
       setPhase("error");
+      return;
+    }
+
+    setSourceName(pastedUrl);
+    setSourceMeta("Pagina web");
+    setPhase("processing");
+    startProgressAnimation();
+
+    try {
+      const result = await summarizeUrl(pastedUrl, { summaryLength, outputLanguage });
+      stopProgressAnimation();
+      setProgress(100);
+      setSummary(result.summary);
+      setOriginalWordCount(result.originalWordCount);
+      setPhase("done");
+    } catch (error) {
+      handleError(error);
     }
   }
 
   function reset() {
     setPhase("idle");
     setPastedText("");
+    setPastedUrl("");
     setSummary("");
     setProgress(0);
   }
@@ -112,6 +140,11 @@ function App() {
   const savedRaw = Math.max(0, originalMinutes - summaryMinutesRaw);
   const timeSavedLabel = savedRaw < 1 ? "<1 min" : `${Math.round(savedRaw)} min`;
 
+  const processingTitle =
+    inputMode === "text" ? "Analizando tu texto…" : inputMode === "url" ? "Leyendo la pagina…" : "Leyendo tu documento…";
+  const processingSubtitle =
+    inputMode === "text" ? "Procesando el texto pegado · esto toma unos segundos" : `${sourceName} · esto toma unos segundos`;
+
   return (
     <main>
       <ThemeToggle />
@@ -126,17 +159,16 @@ function App() {
             onOutputLanguageChange={setOutputLanguage}
             pastedText={pastedText}
             onPastedTextChange={setPastedText}
+            pastedUrl={pastedUrl}
+            onPastedUrlChange={setPastedUrl}
             onSubmitFile={handleSubmitFile}
             onSubmitText={handleSubmitText}
+            onSubmitUrl={handleSubmitUrl}
           />
         )}
 
         {phase === "processing" && (
-          <ProcessingView
-            title={inputMode === "text" ? "Analizando tu texto…" : "Leyendo tu documento…"}
-            subtitle={inputMode === "text" ? "Procesando el texto pegado · esto toma unos segundos" : `${sourceName} · esto toma unos segundos`}
-            progress={progress}
-          />
+          <ProcessingView title={processingTitle} subtitle={processingSubtitle} progress={progress} />
         )}
 
         {phase === "error" && <ErrorView message={errorMessage} onRetry={retryFromError} />}

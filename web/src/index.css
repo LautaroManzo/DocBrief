@@ -306,6 +306,24 @@ textarea {
   outline: none;
 }
 
+.url-input {
+  width: 100%;
+  max-width: 560px;
+  border-radius: 100px;
+  border: 3px solid var(--border-soft);
+  background: var(--card-bg);
+  padding: 16px 22px;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.url-input:focus {
+  border-color: var(--accent);
+}
+
 /* Buttons */
 .btn-primary {
   font-family: "Nunito", sans-serif;
