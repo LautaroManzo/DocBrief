@@ -12,6 +12,16 @@ export interface SummaryResponse {
   originalWordCount: number;
 }
 
+async function assertOk(response: Response) {
+  if (response.ok) return;
+
+  if (response.status === 429) {
+    throw new Error("Alcanzaste el limite de resumenes permitidos. Esperá un momento y volvé a intentar.");
+  }
+
+  throw new Error("No se pudo generar el resumen.");
+}
+
 export async function summarizeText(text: string, options: SummaryOptions): Promise<SummaryResponse> {
   const response = await fetch(`${API_URL}/api/summary/text`, {
     method: "POST",
@@ -23,9 +33,7 @@ export async function summarizeText(text: string, options: SummaryOptions): Prom
     }),
   });
 
-  if (!response.ok) {
-    throw new Error("No se pudo generar el resumen.");
-  }
+  await assertOk(response);
 
   return response.json();
 }
@@ -41,9 +49,7 @@ export async function summarizeFile(file: File, options: SummaryOptions): Promis
     body: formData,
   });
 
-  if (!response.ok) {
-    throw new Error("No se pudo generar el resumen.");
-  }
+  await assertOk(response);
 
   return response.json();
 }

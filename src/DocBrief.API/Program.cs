@@ -1,6 +1,8 @@
+using System.Threading.RateLimiting;
 using DocBrief.Application.Interfaces;
 using DocBrief.Infrastructure.AI;
 using DocBrief.Infrastructure.Parsers;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.SemanticKernel;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,9 +29,58 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else
+        {
+            var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"]
+                ?? throw new InvalidOperationException("Falta configurar Cors:AllowedOrigin en produccion.");
+
+            policy.WithOrigins(allowedOrigin)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+    });
+});
+
+static string GetClientIp(HttpContext httpContext) =>
+    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+var perMinuteLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: GetClientIp(httpContext),
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+
+var perDayLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: GetClientIp(httpContext),
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromDays(1),
+            QueueLimit = 0
+        }));
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.CreateChained(perMinuteLimiter, perDayLimiter);
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsync(
+            "Demasiadas solicitudes. Esperá un momento antes de intentar de nuevo.", cancellationToken);
+    };
 });
 
 // Semantic Kernel + Ollama (desarrollo local) / Gemini (produccion)
@@ -71,13 +122,11 @@ builder.Services.AddMediatR(cfg =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 

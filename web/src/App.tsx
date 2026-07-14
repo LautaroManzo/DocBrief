@@ -61,9 +61,9 @@ function App() {
       setSummary(result.summary);
       setOriginalWordCount(result.originalWordCount);
       setPhase("done");
-    } catch {
+    } catch (error) {
       stopProgressAnimation();
-      setErrorMessage("Ocurrió un error al conectar con el servidor. Intentá nuevamente.");
+      setErrorMessage(error instanceof Error ? error.message : "Ocurrió un error al conectar con el servidor. Intentá nuevamente.");
       setPhase("error");
     }
   }
@@ -87,9 +87,9 @@ function App() {
       setSummary(result.summary);
       setOriginalWordCount(result.originalWordCount);
       setPhase("done");
-    } catch {
+    } catch (error) {
       stopProgressAnimation();
-      setErrorMessage("Ocurrió un error al conectar con el servidor. Intentá nuevamente.");
+      setErrorMessage(error instanceof Error ? error.message : "Ocurrió un error al conectar con el servidor. Intentá nuevamente.");
       setPhase("error");
     }
   }

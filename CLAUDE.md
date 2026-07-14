@@ -23,10 +23,16 @@ ecosistema (Node/npm) — consume la API via HTTP.
 ## Stack
 ### Backend
 - .NET 10, C# 13
-- Semantic Kernel para IA (Ollama local en desarrollo, Gemini en producción)
+- Semantic Kernel para IA — proveedor configurable via `AI:Provider` en appsettings
+  ("Ollama" para desarrollo local con llama3.2, "Gemini" con gemini-flash-lite-latest)
 - PdfPig para parsear PDFs, DocumentFormat.OpenXml para Word
 - MediatR para CQRS
-- Swashbuckle (Swagger) para documentación interactiva
+- Swashbuckle (Swagger) para documentación interactiva — habilitado siempre,
+  incluso en producción (link "API docs" visible en el frontend)
+- Rate limiting nativo de .NET: 10 requests/minuto + 10/dia por IP (en memoria,
+  se resetea si la API reinicia)
+- CORS: en desarrollo acepta cualquier origen `localhost` (Vite cambia de puerto);
+  en produccion exige `Cors:AllowedOrigin` configurado
 - Sin base de datos
 
 ### Frontend (web/)
