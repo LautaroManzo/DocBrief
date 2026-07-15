@@ -50,7 +50,8 @@ ecosistema (Node/npm) — consume la API via HTTP.
 - Sin librerías de UI — componentes y CSS propios (paleta oklch, fuentes Nunito/Inter)
 - jsPDF para exportar el resumen a PDF con formato (títulos, listas, negritas)
 - Dark/light mode con toggle propio (localStorage)
-- Layout responsive (mobile-first en breakpoints clave)
+- Layout responsive (mobile-first en breakpoints clave) — pendiente pulir
+  detalles visuales en mobile, reportados como poco prolijos
 
 ## Estructura
 ```
@@ -88,3 +89,15 @@ npm run dev                               # levantar en localhost:5173
 ollama serve          # si no esta corriendo como servicio
 ollama list            # verificar que llama3.2 este disponible
 ```
+
+## Deploy (produccion)
+- **Backend**: Render (Docker) — https://te-lo-resumo.onrender.com
+  - `Dockerfile` en la raiz del repo, build multi-stage
+  - Escucha en el puerto de la variable `PORT` si esta seteada
+  - Variables de entorno en Render: `AI__Provider=Gemini`,
+    `Gemini__ApiKey=<key>`, `Cors__AllowedOrigin=https://te-lo-resumo.vercel.app`
+  - Free tier: el servicio "duerme" tras inactividad, la primera
+    request tras un rato inactivo tarda ~30-50s en responder
+- **Frontend**: Vercel — https://te-lo-resumo.vercel.app
+  - Root Directory: `web`
+  - Variable de entorno: `VITE_API_URL=https://te-lo-resumo.onrender.com`
