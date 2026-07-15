@@ -16,7 +16,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "DocBrief API",
         Version = "v1",
-        Description = "API REST que resume PDFs, Word y texto plano usando IA."
+        Description = "API REST que resume PDFs, Word, texto plano y paginas web (por URL) usando IA."
     });
 
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";

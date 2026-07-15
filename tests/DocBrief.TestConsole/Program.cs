@@ -1,6 +1,12 @@
 using UglyToad.PdfPig;
 
-var pdfPath = @"C:\Users\lau_m\Desktop\docbrief_proyecto.pdf";
+if (args.Length == 0)
+{
+    Console.WriteLine("Uso: dotnet run --project tests/DocBrief.TestConsole -- <ruta-al-pdf>");
+    return;
+}
+
+var pdfPath = args[0];
 
 using var document = PdfDocument.Open(pdfPath);
 
