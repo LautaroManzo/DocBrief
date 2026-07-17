@@ -22,7 +22,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "DocBrief API",
         Version = "v1",
-        Description = "API REST que resume PDFs, Word, texto plano y paginas web (por URL) usando IA."
+        Description = "API REST que resume PDFs, Word, texto plano, paginas web y videos de YouTube (por URL) usando IA."
     });
 
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -129,6 +129,8 @@ builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>(client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd("DocBrief/1.0 (+https://github.com/LautaroManzo/DocBrief)");
 })
 .ConfigurePrimaryHttpMessageHandler(SsrfSafeHttpClientHandler.Create);
+
+builder.Services.AddScoped<IYouTubeTranscriptFetcher, YouTubeTranscriptFetcher>();
 
 // MediatR
 builder.Services.AddMediatR(cfg =>

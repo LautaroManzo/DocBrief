@@ -79,7 +79,7 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 22px;
+  gap: 30px;
   padding: 40px 60px;
   text-align: center;
 }
@@ -96,7 +96,7 @@ main {
   font-family: "Inter", sans-serif;
   font-size: 16px;
   color: var(--text-secondary);
-  margin: 0;
+  margin: 8px 0 0;
 }
 
 /* Tabs */
@@ -324,6 +324,7 @@ textarea {
 .url-input:focus {
   border-color: var(--accent);
 }
+
 
 /* Buttons */
 .btn-primary {
@@ -590,6 +591,118 @@ textarea {
   color: var(--accent);
 }
 
+/* Info button */
+.info-button {
+  position: fixed;
+  top: 20px;
+  right: 72px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  color: var(--text-secondary-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.info-button:hover {
+  color: var(--accent);
+}
+
+.info-overlay {
+  position: fixed;
+  inset: 0;
+  background: oklch(0 0 0 / 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 30;
+}
+
+.info-modal {
+  width: 100%;
+  max-width: 720px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--card-bg);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: var(--shadow-card);
+  text-align: left;
+}
+
+.info-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.info-modal-header h2 {
+  font-family: "Nunito", sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.info-close {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--soft-bg-2);
+  color: var(--text-secondary-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.info-modal p {
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0 0 28px;
+}
+
+.info-modal h3 {
+  font-family: "Nunito", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+  margin: 0 0 14px;
+}
+
+.info-modal ul {
+  margin: 0 0 28px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-modal li {
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.info-modal ul:last-child {
+  margin-bottom: 0;
+}
+
 /* API docs link */
 .api-docs-link {
   position: absolute;
@@ -622,26 +735,51 @@ textarea {
 /* Mobile */
 @media (max-width: 640px) {
   main {
-    padding: 12px;
+    padding: 0;
+    align-items: stretch;
   }
 
   .card {
-    min-height: auto;
-    border-radius: 24px;
+    min-height: 100svh;
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--page-bg);
   }
 
   .view {
-    padding: 32px 20px 72px;
-    gap: 16px;
+    padding: 28px 20px 32px;
+    gap: 24px;
   }
 
   .view h1 {
     font-size: 24px;
   }
 
+  .tabs {
+    width: 100%;
+  }
+
+  .tabs button {
+    flex: 1;
+    font-size: 12px;
+    padding: 10px 8px;
+  }
+
   .options-row {
     flex-direction: column;
+    align-items: center;
     gap: 12px;
+  }
+
+  .field {
+    width: 200px;
+    flex: none;
+    align-items: center;
+  }
+
+  .field span {
+    align-self: flex-start;
   }
 
   .done-view {
@@ -680,6 +818,13 @@ textarea {
   .theme-toggle {
     top: 12px;
     right: 12px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .info-button {
+    top: 12px;
+    right: 58px;
     width: 38px;
     height: 38px;
   }

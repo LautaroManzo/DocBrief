@@ -1,8 +1,8 @@
 # DocBrief API
 
 ## Qué hace este proyecto
-API REST en .NET que resume PDFs, Word (.docx), texto plano y paginas web (por URL)
-usando IA via Semantic Kernel, con un frontend en React. El usuario elige el tipo de
+API REST en .NET que resume PDFs, Word (.docx), texto plano, paginas web y videos de
+YouTube (por URL) usando IA via Semantic Kernel, con un frontend en React. El usuario elige el tipo de
 resumen (`SummaryMode`: "basico" o "estudio") e idioma de salida (es/en). No persiste
 nada — cada request genera el resumen y lo devuelve, sin historial.
 
@@ -39,6 +39,12 @@ ecosistema (Node/npm) — consume la API via HTTP.
   Proteccion SSRF real: SsrfSafeHttpClientHandler valida la IP en el
   ConnectCallback (momento exacto de conectar), no antes — asi cubre tanto
   redirects (3xx a IPs internas) como DNS rebinding, no solo la URL inicial
+- YoutubeExplode para transcripciones de YouTube (IYouTubeTranscriptFetcher).
+  El endpoint /api/summary/url detecta automaticamente si el link es de
+  YouTube y usa la transcripcion en vez del HTML de la pagina. No hay API
+  oficial para bajar subtitulos de videos ajenos — YoutubeExplode se
+  mantiene activamente para seguirle el paso a los cambios de YouTube
+  (un intento propio de scraping directo se rompio en la primera prueba)
 - Limite de texto pegado: 10.000 caracteres (validado en front y back)
 - Errores de parseo (PDF/DOCX corruptos) devuelven 400 con mensaje claro,
   no 500 con stack trace

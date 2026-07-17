@@ -3,6 +3,7 @@ import { ApiDocsLink } from "./components/ApiDocsLink";
 import { DoneView } from "./components/DoneView";
 import { ErrorView } from "./components/ErrorView";
 import { ACCEPTED_EXTENSIONS, IdleView, MAX_FILE_SIZE, MAX_TEXT_LENGTH } from "./components/IdleView";
+import { InfoButton } from "./components/InfoButton";
 import { ProcessingView } from "./components/ProcessingView";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { summarizeFile, summarizeText, summarizeUrl } from "./services/api";
@@ -141,6 +142,7 @@ function App() {
   return (
     <main>
       <ThemeToggle />
+      <InfoButton />
       <div className="card">
         {phase === "idle" && (
           <IdleView

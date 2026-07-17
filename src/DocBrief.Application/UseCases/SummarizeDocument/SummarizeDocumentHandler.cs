@@ -7,15 +7,18 @@ public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand
 {
     private readonly IDocumentParserResolver _parserResolver;
     private readonly IUrlContentFetcher _urlContentFetcher;
+    private readonly IYouTubeTranscriptFetcher _youTubeTranscriptFetcher;
     private readonly ISummaryService _summaryService;
 
     public SummarizeDocumentHandler(
         IDocumentParserResolver parserResolver,
         IUrlContentFetcher urlContentFetcher,
+        IYouTubeTranscriptFetcher youTubeTranscriptFetcher,
         ISummaryService summaryService)
     {
         _parserResolver = parserResolver;
         _urlContentFetcher = urlContentFetcher;
+        _youTubeTranscriptFetcher = youTubeTranscriptFetcher;
         _summaryService = summaryService;
     }
 
@@ -29,7 +32,7 @@ public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand
             {
                 "file" => await _parserResolver.Resolve(request.File!.FileName).ParseAsync(request.File!),
                 "text" => request.Text!,
-                "url" => await _urlContentFetcher.FetchTextAsync(request.Url!),
+                "url" => await FetchUrlContentAsync(request.Url!),
                 _ => throw new ArgumentException($"Unsupported content type: {request.ContentType}")
             };
         }
@@ -42,4 +45,9 @@ public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand
 
         return new SummarizeDocumentResult(summaryContent);
     }
+
+    private Task<string> FetchUrlContentAsync(string url) =>
+        _youTubeTranscriptFetcher.IsYouTubeUrl(url)
+            ? _youTubeTranscriptFetcher.FetchTranscriptAsync(url)
+            : _urlContentFetcher.FetchTextAsync(url);
 }

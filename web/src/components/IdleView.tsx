@@ -127,7 +127,7 @@ export function IdleView({
       )}
 
       {inputMode === "text" && (
-        <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", gap: 8 }}>
           <textarea
             placeholder="Pegá o escribí el texto que querés resumir…"
             value={pastedText}
@@ -137,18 +137,18 @@ export function IdleView({
           <span className="char-counter">
             {pastedText.length.toLocaleString("es")} / {MAX_TEXT_LENGTH.toLocaleString("es")}
           </span>
-          <button className="btn-primary" style={{ alignSelf: "center" }} onClick={onSubmitText}>
+          <button className="btn-primary" style={{ alignSelf: "center", marginTop: 12 }} onClick={onSubmitText}>
             Resumir texto
           </button>
         </div>
       )}
 
       {inputMode === "url" && (
-        <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", gap: 20 }}>
           <input
             type="url"
             className="url-input"
-            placeholder="https://ejemplo.com/articulo"
+            placeholder="Pegá un link — artículo o video de YouTube"
             value={pastedUrl}
             onChange={(e) => onPastedUrlChange(e.target.value)}
           />

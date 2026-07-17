@@ -5,7 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace DocBrief.API.Controllers;
 
 /// <summary>
-/// Genera resúmenes de documentos (PDF, Word), texto plano o paginas web usando IA.
+/// Genera resúmenes de documentos (PDF, Word), texto plano, paginas web o videos
+/// de YouTube (via su transcripcion) usando IA.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -92,11 +93,15 @@ public class SummaryController : ControllerBase
     }
 
     /// <summary>
-    /// Resume el contenido de una pagina web a partir de su URL.
+    /// Resume el contenido de una pagina web o un video de YouTube a partir de su URL.
+    /// Si la URL es de YouTube, se usa la transcripcion del video en vez del HTML.
     /// </summary>
     /// <param name="request">URL a resumir junto con las opciones de modo e idioma.</param>
     /// <response code="200">Resumen generado correctamente.</response>
-    /// <response code="400">La URL no es valida, no esta permitida o no se pudo acceder a ella.</response>
+    /// <response code="400">
+    /// La URL no es valida, no esta permitida, no se pudo acceder a ella, o el video
+    /// de YouTube no tiene subtitulos disponibles.
+    /// </response>
     [HttpPost("url")]
     [ProducesResponseType(typeof(SummarizeDocumentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
