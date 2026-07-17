@@ -2,9 +2,15 @@
 
 ## Qué hace este proyecto
 API REST en .NET que resume PDFs, Word (.docx), texto plano y paginas web (por URL)
-usando IA via Semantic Kernel, con un frontend en React. El usuario elige largo del
-resumen (corto/medio/detallado) e idioma de salida (es/en). No persiste nada — cada
-request genera el resumen y lo devuelve, sin historial.
+usando IA via Semantic Kernel, con un frontend en React. El usuario elige el tipo de
+resumen (`SummaryMode`: "basico" o "estudio") e idioma de salida (es/en). No persiste
+nada — cada request genera el resumen y lo devuelve, sin historial.
+
+Modos de resumen (ver SemanticKernelSummaryService, dos prompts distintos):
+- **Básico**: sintesis clara y concisa en 1-2 parrafos.
+- **Plan de estudio**: material de estudio extenso que aplica tecnicas de aprendizaje
+  (chunking en secciones, elaboracion con ejemplos, glosario de "Terminos clave" y
+  active recall con "Preguntas de repaso" + respuestas).
 
 El repo/proyecto backend se llama **DocBrief**, pero el frontend se presenta al
 usuario como **"Te lo resumo"** (titulo de la pestana y branding visible).

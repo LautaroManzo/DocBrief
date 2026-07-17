@@ -6,14 +6,12 @@ import { ACCEPTED_EXTENSIONS, IdleView, MAX_FILE_SIZE, MAX_TEXT_LENGTH } from ".
 import { ProcessingView } from "./components/ProcessingView";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { summarizeFile, summarizeText, summarizeUrl } from "./services/api";
-import type { InputMode, OutputLanguage, Phase, SummaryLength } from "./types";
-
-const WORDS_PER_MINUTE = 200;
+import type { InputMode, OutputLanguage, Phase, SummaryMode } from "./types";
 
 function App() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [inputMode, setInputMode] = useState<InputMode>("file");
-  const [summaryLength, setSummaryLength] = useState<SummaryLength>("medio");
+  const [summaryMode, setSummaryMode] = useState<SummaryMode>("basico");
   const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>("es");
   const [pastedText, setPastedText] = useState("");
   const [pastedUrl, setPastedUrl] = useState("");
@@ -21,7 +19,6 @@ function App() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const [summary, setSummary] = useState("");
-  const [originalWordCount, setOriginalWordCount] = useState(0);
   const [sourceName, setSourceName] = useState("");
   const [sourceMeta, setSourceMeta] = useState("");
 
@@ -62,11 +59,10 @@ function App() {
     startProgressAnimation();
 
     try {
-      const result = await summarizeFile(file, { summaryLength, outputLanguage });
+      const result = await summarizeFile(file, { summaryMode, outputLanguage });
       stopProgressAnimation();
       setProgress(100);
       setSummary(result.summary);
-      setOriginalWordCount(result.originalWordCount);
       setPhase("done");
     } catch (error) {
       handleError(error);
@@ -92,11 +88,10 @@ function App() {
     startProgressAnimation();
 
     try {
-      const result = await summarizeText(pastedText, { summaryLength, outputLanguage });
+      const result = await summarizeText(pastedText, { summaryMode, outputLanguage });
       stopProgressAnimation();
       setProgress(100);
       setSummary(result.summary);
-      setOriginalWordCount(result.originalWordCount);
       setPhase("done");
     } catch (error) {
       handleError(error);
@@ -116,11 +111,10 @@ function App() {
     startProgressAnimation();
 
     try {
-      const result = await summarizeUrl(pastedUrl, { summaryLength, outputLanguage });
+      const result = await summarizeUrl(pastedUrl, { summaryMode, outputLanguage });
       stopProgressAnimation();
       setProgress(100);
       setSummary(result.summary);
-      setOriginalWordCount(result.originalWordCount);
       setPhase("done");
     } catch (error) {
       handleError(error);
@@ -139,13 +133,6 @@ function App() {
     setPhase("idle");
   }
 
-  const originalMinutes = Math.max(1, Math.round(originalWordCount / WORDS_PER_MINUTE));
-  const summaryWordCount = summary.trim().split(/\s+/).filter(Boolean).length;
-  const summaryMinutesRaw = summaryWordCount / WORDS_PER_MINUTE;
-  const summaryMinutes = summaryMinutesRaw < 1 ? "<1" : Math.round(summaryMinutesRaw);
-  const savedRaw = Math.max(0, originalMinutes - summaryMinutesRaw);
-  const timeSavedLabel = savedRaw < 1 ? "<1 min" : `${Math.round(savedRaw)} min`;
-
   const processingTitle =
     inputMode === "text" ? "Analizando tu texto…" : inputMode === "url" ? "Leyendo la pagina…" : "Leyendo tu documento…";
   const processingSubtitle =
@@ -159,8 +146,8 @@ function App() {
           <IdleView
             inputMode={inputMode}
             onInputModeChange={setInputMode}
-            summaryLength={summaryLength}
-            onSummaryLengthChange={setSummaryLength}
+            summaryMode={summaryMode}
+            onSummaryModeChange={setSummaryMode}
             outputLanguage={outputLanguage}
             onOutputLanguageChange={setOutputLanguage}
             pastedText={pastedText}
@@ -184,9 +171,6 @@ function App() {
             summary={summary}
             sourceName={sourceName}
             sourceMeta={sourceMeta}
-            originalMinutes={originalMinutes}
-            summaryMinutes={summaryMinutes}
-            timeSavedLabel={timeSavedLabel}
             onReset={reset}
           />
         )}

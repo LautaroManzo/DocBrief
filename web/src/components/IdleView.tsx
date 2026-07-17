@@ -1,11 +1,10 @@
 import { useRef, useState } from "react";
-import type { InputMode, OutputLanguage, SummaryLength } from "../types";
+import type { InputMode, OutputLanguage, SummaryMode } from "../types";
 import { Select } from "./Select";
 
-const SUMMARY_LENGTH_OPTIONS = [
-  { value: "corto", label: "Corto" },
-  { value: "medio", label: "Medio" },
-  { value: "detallado", label: "Detallado" },
+const SUMMARY_MODE_OPTIONS = [
+  { value: "basico", label: "Básico" },
+  { value: "estudio", label: "Plan de estudio" },
 ];
 
 const OUTPUT_LANGUAGE_OPTIONS = [
@@ -16,8 +15,8 @@ const OUTPUT_LANGUAGE_OPTIONS = [
 interface IdleViewProps {
   inputMode: InputMode;
   onInputModeChange: (mode: InputMode) => void;
-  summaryLength: SummaryLength;
-  onSummaryLengthChange: (value: SummaryLength) => void;
+  summaryMode: SummaryMode;
+  onSummaryModeChange: (value: SummaryMode) => void;
   outputLanguage: OutputLanguage;
   onOutputLanguageChange: (value: OutputLanguage) => void;
   pastedText: string;
@@ -36,8 +35,8 @@ const MAX_TEXT_LENGTH = 10_000;
 export function IdleView({
   inputMode,
   onInputModeChange,
-  summaryLength,
-  onSummaryLengthChange,
+  summaryMode,
+  onSummaryModeChange,
   outputLanguage,
   onOutputLanguageChange,
   pastedText,
@@ -83,11 +82,11 @@ export function IdleView({
 
       <div className="options-row">
         <div className="field">
-          <span>Largo del resumen</span>
+          <span>Tipo de resumen</span>
           <Select
-            value={summaryLength}
-            options={SUMMARY_LENGTH_OPTIONS}
-            onChange={(v) => onSummaryLengthChange(v as SummaryLength)}
+            value={summaryMode}
+            options={SUMMARY_MODE_OPTIONS}
+            onChange={(v) => onSummaryModeChange(v as SummaryMode)}
           />
         </div>
         <div className="field">

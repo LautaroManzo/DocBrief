@@ -27,7 +27,7 @@ public class SummaryController : ControllerBase
     /// Resume un archivo PDF o Word.
     /// </summary>
     /// <param name="file">Archivo a resumir (PDF o DOCX, maximo 10 MB).</param>
-    /// <param name="summaryLength">Largo del resumen: "corto", "medio" o "detallado".</param>
+    /// <param name="summaryMode">Modo de resumen: "basico" o "estudio".</param>
     /// <param name="outputLanguage">Idioma del resumen: "es" o "en".</param>
     /// <response code="200">Resumen generado correctamente.</response>
     /// <response code="400">El archivo es invalido, no tiene un formato soportado o supera los 10 MB.</response>
@@ -37,7 +37,7 @@ public class SummaryController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SummarizeFile(
         IFormFile file,
-        [FromForm] string summaryLength = "medio",
+        [FromForm] string summaryMode = "basico",
         [FromForm] string outputLanguage = "es")
     {
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
@@ -50,7 +50,7 @@ public class SummaryController : ControllerBase
 
         try
         {
-            var command = new SummarizeDocumentCommand(file, null, null, "file", summaryLength, outputLanguage);
+            var command = new SummarizeDocumentCommand(file, null, null, "file", summaryMode, outputLanguage);
             var result = await _mediator.Send(command);
 
             return Ok(result);
@@ -64,7 +64,7 @@ public class SummaryController : ControllerBase
     /// <summary>
     /// Resume un texto plano.
     /// </summary>
-    /// <param name="request">Texto a resumir junto con las opciones de largo e idioma.</param>
+    /// <param name="request">Texto a resumir junto con las opciones de modo e idioma.</param>
     /// <response code="200">Resumen generado correctamente.</response>
     /// <response code="400">No se envio texto, o supera los 10.000 caracteres.</response>
     [HttpPost("text")]
@@ -83,7 +83,7 @@ public class SummaryController : ControllerBase
             request.Text,
             null,
             "text",
-            request.SummaryLength ?? "medio",
+            request.SummaryMode ?? "basico",
             request.OutputLanguage ?? "es");
 
         var result = await _mediator.Send(command);
@@ -94,7 +94,7 @@ public class SummaryController : ControllerBase
     /// <summary>
     /// Resume el contenido de una pagina web a partir de su URL.
     /// </summary>
-    /// <param name="request">URL a resumir junto con las opciones de largo e idioma.</param>
+    /// <param name="request">URL a resumir junto con las opciones de modo e idioma.</param>
     /// <response code="200">Resumen generado correctamente.</response>
     /// <response code="400">La URL no es valida, no esta permitida o no se pudo acceder a ella.</response>
     [HttpPost("url")]
@@ -112,7 +112,7 @@ public class SummaryController : ControllerBase
                 null,
                 request.Url,
                 "url",
-                request.SummaryLength ?? "medio",
+                request.SummaryMode ?? "basico",
                 request.OutputLanguage ?? "es");
 
             var result = await _mediator.Send(command);
@@ -134,14 +134,14 @@ public class SummaryController : ControllerBase
 /// Datos para resumir un texto plano.
 /// </summary>
 /// <param name="Text">Texto a resumir.</param>
-/// <param name="SummaryLength">Largo del resumen: "corto", "medio" o "detallado". Por defecto "medio".</param>
+/// <param name="SummaryMode">Modo de resumen: "basico" o "estudio". Por defecto "basico".</param>
 /// <param name="OutputLanguage">Idioma del resumen: "es" o "en". Por defecto "es".</param>
-public record TextRequest(string Text, string? SummaryLength, string? OutputLanguage);
+public record TextRequest(string Text, string? SummaryMode, string? OutputLanguage);
 
 /// <summary>
 /// Datos para resumir una pagina web.
 /// </summary>
 /// <param name="Url">URL de la pagina a resumir.</param>
-/// <param name="SummaryLength">Largo del resumen: "corto", "medio" o "detallado". Por defecto "medio".</param>
+/// <param name="SummaryMode">Modo de resumen: "basico" o "estudio". Por defecto "basico".</param>
 /// <param name="OutputLanguage">Idioma del resumen: "es" o "en". Por defecto "es".</param>
-public record UrlRequest(string Url, string? SummaryLength, string? OutputLanguage);
+public record UrlRequest(string Url, string? SummaryMode, string? OutputLanguage);

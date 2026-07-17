@@ -1,15 +1,14 @@
-import type { OutputLanguage, SummaryLength } from "../types";
+import type { OutputLanguage, SummaryMode } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface SummaryOptions {
-  summaryLength: SummaryLength;
+  summaryMode: SummaryMode;
   outputLanguage: OutputLanguage;
 }
 
 export interface SummaryResponse {
   summary: string;
-  originalWordCount: number;
 }
 
 async function assertOk(response: Response) {
@@ -42,7 +41,7 @@ export async function summarizeText(text: string, options: SummaryOptions): Prom
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       text,
-      summaryLength: options.summaryLength,
+      summaryMode: options.summaryMode,
       outputLanguage: options.outputLanguage,
     }),
   });
@@ -55,7 +54,7 @@ export async function summarizeText(text: string, options: SummaryOptions): Prom
 export async function summarizeFile(file: File, options: SummaryOptions): Promise<SummaryResponse> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("summaryLength", options.summaryLength);
+  formData.append("summaryMode", options.summaryMode);
   formData.append("outputLanguage", options.outputLanguage);
 
   const response = await fetch(`${API_URL}/api/summary/file`, {
@@ -74,7 +73,7 @@ export async function summarizeUrl(url: string, options: SummaryOptions): Promis
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       url,
-      summaryLength: options.summaryLength,
+      summaryMode: options.summaryMode,
       outputLanguage: options.outputLanguage,
     }),
   });

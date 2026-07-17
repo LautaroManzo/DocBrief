@@ -8,7 +8,7 @@ public record SummarizeDocumentCommand(
     string? Text,
     string? Url,
     string ContentType,
-    string SummaryLength,
+    string SummaryMode,
     string OutputLanguage) : IRequest<SummarizeDocumentResult>;
 
-public record SummarizeDocumentResult(string Summary, int OriginalWordCount);
+public record SummarizeDocumentResult(string Summary);

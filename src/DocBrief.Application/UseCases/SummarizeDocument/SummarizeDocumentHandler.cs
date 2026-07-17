@@ -38,9 +38,8 @@ public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand
             throw new ArgumentException("No pudimos leer ese archivo. Verificá que no este daniado o corrupto.", ex);
         }
 
-        var summaryContent = await _summaryService.SummarizeAsync(extractedText, request.SummaryLength, request.OutputLanguage);
-        var originalWordCount = extractedText.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        var summaryContent = await _summaryService.SummarizeAsync(extractedText, request.SummaryMode, request.OutputLanguage);
 
-        return new SummarizeDocumentResult(summaryContent, originalWordCount);
+        return new SummarizeDocumentResult(summaryContent);
     }
 }
