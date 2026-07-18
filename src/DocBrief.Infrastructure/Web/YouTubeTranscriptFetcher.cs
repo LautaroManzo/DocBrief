@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using DocBrief.Application.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -64,6 +66,7 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
             catch (VideoUnavailableException ex)
             {
                 _logger.LogError(ex, "YouTube VideoUnavailableException final para {VideoId}: {Message}", videoId, ex.Message);
+                await LogPlayabilityReasonAsync(videoId);
                 throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
             }
             catch (YoutubeExplodeException ex)
@@ -74,6 +77,65 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
         }
 
         throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
+    }
+
+    /// <summary>
+    /// Diagnostico: replica la llamada interna que hace YoutubeExplode al endpoint
+    /// de player de YouTube para leer el motivo real de "playabilityStatus.reason"
+    /// (ej. "Sign in to confirm you're not a bot"), que la libreria descarta antes
+    /// de tirar VideoUnavailableException con un mensaje generico.
+    /// </summary>
+    private async Task LogPlayabilityReasonAsync(string videoId)
+    {
+        try
+        {
+            using var http = new HttpClient();
+
+            var body = $$"""
+            {
+              "videoId": "{{videoId}}",
+              "contentCheckOk": true,
+              "context": {
+                "client": {
+                  "clientName": "ANDROID_VR",
+                  "clientVersion": "1.60.19",
+                  "deviceMake": "Oculus",
+                  "deviceModel": "Quest 3",
+                  "osName": "Android",
+                  "osVersion": "12L",
+                  "platform": "MOBILE",
+                  "hl": "en",
+                  "gl": "US",
+                  "utcOffsetMinutes": 0
+                }
+              }
+            }
+            """;
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://www.youtube.com/youtubei/v1/player")
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add(
+                "User-Agent",
+                "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip");
+
+            using var response = await http.SendAsync(request);
+            var json = await response.Content.ReadAsStringAsync();
+
+            using var doc = JsonDocument.Parse(json);
+            var playability = doc.RootElement.GetProperty("playabilityStatus");
+            var status = playability.TryGetProperty("status", out var s) ? s.GetString() : null;
+            var reason = playability.TryGetProperty("reason", out var r) ? r.GetString() : null;
+
+            _logger.LogWarning(
+                "Diagnostico playability YouTube {VideoId}: status={Status} reason={Reason}",
+                videoId, status, reason);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo obtener el diagnostico de playability para {VideoId}", videoId);
+        }
     }
 
     private static string ExtractVideoId(string url)
