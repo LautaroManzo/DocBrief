@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using DocBrief.Application.Interfaces;
+using Microsoft.Extensions.Logging;
 using YoutubeExplode;
 using YoutubeExplode.Common;
 using YoutubeExplode.Exceptions;
@@ -19,6 +20,12 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
         RegexOptions.Compiled);
 
     private readonly YoutubeClient _youtubeClient = new();
+    private readonly ILogger<YouTubeTranscriptFetcher> _logger;
+
+    public YouTubeTranscriptFetcher(ILogger<YouTubeTranscriptFetcher> logger)
+    {
+        _logger = logger;
+    }
 
     public bool IsYouTubeUrl(string url) => VideoUrlRegex.IsMatch(url);
 
@@ -48,16 +55,20 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
 
                 return text;
             }
-            catch (VideoUnavailableException) when (attempt < MaxAttempts)
+            catch (VideoUnavailableException ex) when (attempt < MaxAttempts)
             {
+                _logger.LogWarning(ex, "YouTube VideoUnavailableException en intento {Attempt}/{MaxAttempts} para {VideoId}: {Message}",
+                    attempt, MaxAttempts, videoId, ex.Message);
                 await Task.Delay(TimeSpan.FromSeconds(attempt));
             }
-            catch (VideoUnavailableException)
+            catch (VideoUnavailableException ex)
             {
+                _logger.LogError(ex, "YouTube VideoUnavailableException final para {VideoId}: {Message}", videoId, ex.Message);
                 throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
             }
-            catch (YoutubeExplodeException)
+            catch (YoutubeExplodeException ex)
             {
+                _logger.LogError(ex, "YoutubeExplodeException para {VideoId}: {Message}", videoId, ex.Message);
                 throw new ArgumentException("No pudimos obtener la transcripcion de ese video.");
             }
         }
