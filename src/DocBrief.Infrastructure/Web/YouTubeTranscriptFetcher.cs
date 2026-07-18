@@ -1,7 +1,6 @@
-using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using DocBrief.Application.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using YoutubeExplode;
 using YoutubeExplode.Common;
@@ -14,6 +13,10 @@ namespace DocBrief.Infrastructure.Web;
 /// una libreria mantenida activamente que se encarga de la complejidad y los cambios
 /// frecuentes de YouTube (no hay API publica oficial para bajar subtitulos de videos
 /// ajenos, asi que replicar esto a mano es fragil y se rompe seguido).
+/// Desde IPs de datacenter (como las de Render) YouTube bloquea las requests
+/// anonimas con "Sign in to confirm you're not a bot" — por eso, si esta
+/// configurada la variable YouTube:CookiesFile (cookies.txt de una cuenta
+/// autenticada, formato Netscape), se usan para autenticar las requests.
 /// </summary>
 public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
 {
@@ -21,17 +24,29 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
         @"(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([a-zA-Z0-9_-]{11})",
         RegexOptions.Compiled);
 
-    private readonly YoutubeClient _youtubeClient = new();
+    private const int MaxAttempts = 3;
+
+    private readonly YoutubeClient _youtubeClient;
     private readonly ILogger<YouTubeTranscriptFetcher> _logger;
 
-    public YouTubeTranscriptFetcher(ILogger<YouTubeTranscriptFetcher> logger)
+    public YouTubeTranscriptFetcher(IConfiguration configuration, ILogger<YouTubeTranscriptFetcher> logger)
     {
         _logger = logger;
+
+        var cookiesFile = configuration["YouTube:CookiesFile"];
+        if (!string.IsNullOrWhiteSpace(cookiesFile))
+        {
+            var cookies = NetscapeCookieParser.Parse(cookiesFile);
+            _youtubeClient = new YoutubeClient(cookies);
+            _logger.LogInformation("YouTubeTranscriptFetcher inicializado con {Count} cookies de autenticacion.", cookies.Count);
+        }
+        else
+        {
+            _youtubeClient = new YoutubeClient();
+        }
     }
 
     public bool IsYouTubeUrl(string url) => VideoUrlRegex.IsMatch(url);
-
-    private const int MaxAttempts = 3;
 
     public async Task<string> FetchTranscriptAsync(string url)
     {
@@ -66,7 +81,6 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
             catch (VideoUnavailableException ex)
             {
                 _logger.LogError(ex, "YouTube VideoUnavailableException final para {VideoId}: {Message}", videoId, ex.Message);
-                await LogPlayabilityReasonAsync(videoId);
                 throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
             }
             catch (YoutubeExplodeException ex)
@@ -77,97 +91,6 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
         }
 
         throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
-    }
-
-    /// <summary>
-    /// Diagnostico: replica las llamadas internas que hace YoutubeExplode al endpoint
-    /// de player de YouTube para leer el motivo real de "playabilityStatus.reason"
-    /// (ej. "Sign in to confirm you're not a bot"), que la libreria descarta antes de
-    /// tirar VideoUnavailableException con un mensaje generico. Prueba tambien el
-    /// cliente TVHTML5_SIMPLY_EMBEDDED_PLAYER (pensado para reproducir videos
-    /// embebidos en sitios de terceros sin login) para ver si esquiva el bloqueo
-    /// que si afecta al cliente ANDROID_VR que usa YoutubeExplode para subtitulos.
-    /// </summary>
-    private async Task LogPlayabilityReasonAsync(string videoId)
-    {
-        await LogPlayabilityForClientAsync(
-            videoId,
-            "ANDROID_VR",
-            $$"""
-            {
-              "videoId": "{{videoId}}",
-              "contentCheckOk": true,
-              "context": {
-                "client": {
-                  "clientName": "ANDROID_VR",
-                  "clientVersion": "1.60.19",
-                  "deviceMake": "Oculus",
-                  "deviceModel": "Quest 3",
-                  "osName": "Android",
-                  "osVersion": "12L",
-                  "platform": "MOBILE",
-                  "hl": "en",
-                  "gl": "US",
-                  "utcOffsetMinutes": 0
-                }
-              }
-            }
-            """,
-            "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip");
-
-        await LogPlayabilityForClientAsync(
-            videoId,
-            "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
-            $$"""
-            {
-              "videoId": "{{videoId}}",
-              "context": {
-                "client": {
-                  "clientName": "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
-                  "clientVersion": "2.0",
-                  "hl": "en",
-                  "gl": "US",
-                  "utcOffsetMinutes": 0
-                },
-                "thirdParty": {
-                  "embedUrl": "https://www.youtube.com"
-                }
-              }
-            }
-            """,
-            null);
-    }
-
-    private async Task LogPlayabilityForClientAsync(string videoId, string clientName, string body, string? userAgent)
-    {
-        try
-        {
-            using var http = new HttpClient();
-
-            using var request = new HttpRequestMessage(HttpMethod.Post, "https://www.youtube.com/youtubei/v1/player")
-            {
-                Content = new StringContent(body, Encoding.UTF8, "application/json")
-            };
-            if (userAgent is not null)
-                request.Headers.Add("User-Agent", userAgent);
-
-            using var response = await http.SendAsync(request);
-            var json = await response.Content.ReadAsStringAsync();
-
-            using var doc = JsonDocument.Parse(json);
-            var playability = doc.RootElement.GetProperty("playabilityStatus");
-            var status = playability.TryGetProperty("status", out var s) ? s.GetString() : null;
-            var reason = playability.TryGetProperty("reason", out var r) ? r.GetString() : null;
-            var hasCaptions = doc.RootElement.TryGetProperty("captions", out _);
-
-            _logger.LogWarning(
-                "Diagnostico playability YouTube {VideoId} [{ClientName}]: status={Status} reason={Reason} hasCaptions={HasCaptions}",
-                videoId, clientName, status, reason, hasCaptions);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "No se pudo obtener el diagnostico de playability [{ClientName}] para {VideoId}", clientName, videoId);
-        }
     }
 
     private static string ExtractVideoId(string url)
