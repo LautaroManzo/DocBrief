@@ -80,18 +80,20 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
     }
 
     /// <summary>
-    /// Diagnostico: replica la llamada interna que hace YoutubeExplode al endpoint
+    /// Diagnostico: replica las llamadas internas que hace YoutubeExplode al endpoint
     /// de player de YouTube para leer el motivo real de "playabilityStatus.reason"
-    /// (ej. "Sign in to confirm you're not a bot"), que la libreria descarta antes
-    /// de tirar VideoUnavailableException con un mensaje generico.
+    /// (ej. "Sign in to confirm you're not a bot"), que la libreria descarta antes de
+    /// tirar VideoUnavailableException con un mensaje generico. Prueba tambien el
+    /// cliente TVHTML5_SIMPLY_EMBEDDED_PLAYER (pensado para reproducir videos
+    /// embebidos en sitios de terceros sin login) para ver si esquiva el bloqueo
+    /// que si afecta al cliente ANDROID_VR que usa YoutubeExplode para subtitulos.
     /// </summary>
     private async Task LogPlayabilityReasonAsync(string videoId)
     {
-        try
-        {
-            using var http = new HttpClient();
-
-            var body = $$"""
+        await LogPlayabilityForClientAsync(
+            videoId,
+            "ANDROID_VR",
+            $$"""
             {
               "videoId": "{{videoId}}",
               "contentCheckOk": true,
@@ -110,15 +112,44 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
                 }
               }
             }
-            """;
+            """,
+            "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip");
+
+        await LogPlayabilityForClientAsync(
+            videoId,
+            "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+            $$"""
+            {
+              "videoId": "{{videoId}}",
+              "context": {
+                "client": {
+                  "clientName": "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+                  "clientVersion": "2.0",
+                  "hl": "en",
+                  "gl": "US",
+                  "utcOffsetMinutes": 0
+                },
+                "thirdParty": {
+                  "embedUrl": "https://www.youtube.com"
+                }
+              }
+            }
+            """,
+            null);
+    }
+
+    private async Task LogPlayabilityForClientAsync(string videoId, string clientName, string body, string? userAgent)
+    {
+        try
+        {
+            using var http = new HttpClient();
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "https://www.youtube.com/youtubei/v1/player")
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/json")
             };
-            request.Headers.Add(
-                "User-Agent",
-                "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip");
+            if (userAgent is not null)
+                request.Headers.Add("User-Agent", userAgent);
 
             using var response = await http.SendAsync(request);
             var json = await response.Content.ReadAsStringAsync();
@@ -127,14 +158,15 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
             var playability = doc.RootElement.GetProperty("playabilityStatus");
             var status = playability.TryGetProperty("status", out var s) ? s.GetString() : null;
             var reason = playability.TryGetProperty("reason", out var r) ? r.GetString() : null;
+            var hasCaptions = doc.RootElement.TryGetProperty("captions", out _);
 
             _logger.LogWarning(
-                "Diagnostico playability YouTube {VideoId}: status={Status} reason={Reason}",
-                videoId, status, reason);
+                "Diagnostico playability YouTube {VideoId} [{ClientName}]: status={Status} reason={Reason} hasCaptions={HasCaptions}",
+                videoId, clientName, status, reason, hasCaptions);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "No se pudo obtener el diagnostico de playability para {VideoId}", videoId);
+            _logger.LogWarning(ex, "No se pudo obtener el diagnostico de playability [{ClientName}] para {VideoId}", clientName, videoId);
         }
     }
 
