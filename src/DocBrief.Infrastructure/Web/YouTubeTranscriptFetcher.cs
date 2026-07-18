@@ -22,36 +22,47 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
 
     public bool IsYouTubeUrl(string url) => VideoUrlRegex.IsMatch(url);
 
+    private const int MaxAttempts = 3;
+
     public async Task<string> FetchTranscriptAsync(string url)
     {
         var videoId = ExtractVideoId(url);
 
-        try
+        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
-            var trackManifest = await _youtubeClient.Videos.ClosedCaptions.GetManifestAsync(videoId);
+            try
+            {
+                var trackManifest = await _youtubeClient.Videos.ClosedCaptions.GetManifestAsync(videoId);
 
-            var trackInfo = trackManifest.TryGetByLanguage("en")
-                ?? trackManifest.Tracks.FirstOrDefault()
-                ?? throw new ArgumentException("Ese video no tiene subtitulos/transcripcion disponible.");
+                var trackInfo = trackManifest.TryGetByLanguage("en")
+                    ?? trackManifest.Tracks.FirstOrDefault()
+                    ?? throw new ArgumentException("Ese video no tiene subtitulos/transcripcion disponible.");
 
-            var track = await _youtubeClient.Videos.ClosedCaptions.GetAsync(trackInfo);
+                var track = await _youtubeClient.Videos.ClosedCaptions.GetAsync(trackInfo);
 
-            var text = string.Join(" ", track.Captions.Select(c => c.Text));
-            text = Regex.Replace(text, @"\s+", " ").Trim();
+                var text = string.Join(" ", track.Captions.Select(c => c.Text));
+                text = Regex.Replace(text, @"\s+", " ").Trim();
 
-            if (string.IsNullOrWhiteSpace(text))
-                throw new ArgumentException("No pudimos extraer texto de la transcripcion de ese video.");
+                if (string.IsNullOrWhiteSpace(text))
+                    throw new ArgumentException("No pudimos extraer texto de la transcripcion de ese video.");
 
-            return text;
+                return text;
+            }
+            catch (VideoUnavailableException) when (attempt < MaxAttempts)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(attempt));
+            }
+            catch (VideoUnavailableException)
+            {
+                throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
+            }
+            catch (YoutubeExplodeException)
+            {
+                throw new ArgumentException("No pudimos obtener la transcripcion de ese video.");
+            }
         }
-        catch (VideoUnavailableException)
-        {
-            throw new ArgumentException("Ese video no esta disponible (puede ser privado, tener restriccion de edad o no existir).");
-        }
-        catch (YoutubeExplodeException)
-        {
-            throw new ArgumentException("No pudimos obtener la transcripcion de ese video.");
-        }
+
+        throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
     }
 
     private static string ExtractVideoId(string url)
