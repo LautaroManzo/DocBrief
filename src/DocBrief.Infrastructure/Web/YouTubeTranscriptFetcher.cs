@@ -1,5 +1,3 @@
-using System.Net;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using DocBrief.Application.Interfaces;
@@ -12,14 +10,14 @@ using YoutubeExplode.Exceptions;
 namespace DocBrief.Infrastructure.Web;
 
 /// <summary>
-/// Extrae la transcripcion/subtitulos de un video de YouTube usando YoutubeExplode,
-/// una libreria mantenida activamente que se encarga de la complejidad y los cambios
-/// frecuentes de YouTube (no hay API publica oficial para bajar subtitulos de videos
-/// ajenos, asi que replicar esto a mano es fragil y se rompe seguido).
-/// Desde IPs de datacenter (como las de Render) YouTube bloquea las requests
-/// anonimas con "Sign in to confirm you're not a bot" — por eso, si esta
-/// configurada la variable YouTube:CookiesFile (cookies.txt de una cuenta
-/// autenticada, formato Netscape), se usan para autenticar las requests.
+/// Extrae la transcripcion/subtitulos de un video de YouTube. Desde IPs de
+/// datacenter (como las de Render) YouTube bloquea las requests con "Sign in to
+/// confirm you're not a bot" a nivel de IP — confirmado que pasa incluso con
+/// cookies de una cuenta autenticada, asi que no hay forma de esquivarlo desde el
+/// propio backend. Si esta configurada la variable Proxy:YouTubeTranscriptUrl,
+/// el fetch se delega a una funcion serverless en Vercel (otra red, otra IP);
+/// si no, usa YoutubeExplode directamente (sirve para desarrollo local, donde el
+/// bloqueo no aplica).
 /// </summary>
 public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
 {
@@ -29,34 +27,83 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
 
     private const int MaxAttempts = 3;
 
+    private readonly HttpClient _http;
     private readonly YoutubeClient _youtubeClient;
     private readonly ILogger<YouTubeTranscriptFetcher> _logger;
-    private readonly List<Cookie> _cookies;
+    private readonly string? _proxyUrl;
 
-    public YouTubeTranscriptFetcher(IConfiguration configuration, ILogger<YouTubeTranscriptFetcher> logger)
+    public YouTubeTranscriptFetcher(HttpClient http, IConfiguration configuration, ILogger<YouTubeTranscriptFetcher> logger)
     {
+        _http = http;
         _logger = logger;
+        _proxyUrl = configuration["Proxy:YouTubeTranscriptUrl"];
 
         var cookiesFile = configuration["YouTube:CookiesFile"];
-        if (!string.IsNullOrWhiteSpace(cookiesFile))
-        {
-            _cookies = NetscapeCookieParser.Parse(cookiesFile);
-            _youtubeClient = new YoutubeClient(_cookies);
-            _logger.LogInformation("YouTubeTranscriptFetcher inicializado con {Count} cookies de autenticacion.", _cookies.Count);
-        }
-        else
-        {
-            _cookies = [];
-            _youtubeClient = new YoutubeClient();
-        }
+        _youtubeClient = !string.IsNullOrWhiteSpace(cookiesFile)
+            ? new YoutubeClient(NetscapeCookieParser.Parse(cookiesFile))
+            : new YoutubeClient();
     }
 
     public bool IsYouTubeUrl(string url) => VideoUrlRegex.IsMatch(url);
 
-    public async Task<string> FetchTranscriptAsync(string url)
+    public Task<string> FetchTranscriptAsync(string url)
     {
         var videoId = ExtractVideoId(url);
 
+        return !string.IsNullOrWhiteSpace(_proxyUrl)
+            ? FetchViaProxyAsync(videoId)
+            : FetchViaYoutubeExplodeAsync(videoId);
+    }
+
+    private async Task<string> FetchViaProxyAsync(string videoId)
+    {
+        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            try
+            {
+                var response = await _http.GetAsync($"{_proxyUrl}?videoId={videoId}");
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+
+                if (response.IsSuccessStatusCode && doc.RootElement.TryGetProperty("text", out var textElement))
+                {
+                    var text = textElement.GetString() ?? "";
+                    if (string.IsNullOrWhiteSpace(text))
+                        throw new ArgumentException("No pudimos extraer texto de la transcripcion de ese video.");
+
+                    return text;
+                }
+
+                var error = doc.RootElement.TryGetProperty("error", out var errorElement)
+                    ? errorElement.GetString()
+                    : null;
+
+                _logger.LogWarning(
+                    "Proxy de transcripcion devolvio {StatusCode} en intento {Attempt}/{MaxAttempts} para {VideoId}: {Error}",
+                    (int)response.StatusCode, attempt, MaxAttempts, videoId, error);
+
+                if (attempt == MaxAttempts)
+                    throw new ArgumentException(error ?? "No pudimos obtener la transcripcion de ese video.");
+            }
+            catch (HttpRequestException ex) when (attempt < MaxAttempts)
+            {
+                _logger.LogWarning(ex, "Error de red contra el proxy de transcripcion en intento {Attempt}/{MaxAttempts} para {VideoId}",
+                    attempt, MaxAttempts, videoId);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Error de red contra el proxy de transcripcion para {VideoId}", videoId);
+                throw new ArgumentException("No pudimos acceder a ese video en este momento. Proba de nuevo en unos minutos.");
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(attempt));
+        }
+
+        throw new ArgumentException("No pudimos acceder a ese video en este momento. Proba de nuevo en unos minutos.");
+    }
+
+    private async Task<string> FetchViaYoutubeExplodeAsync(string videoId)
+    {
         for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             try
@@ -86,7 +133,6 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
             catch (VideoUnavailableException ex)
             {
                 _logger.LogError(ex, "YouTube VideoUnavailableException final para {VideoId}: {Message}", videoId, ex.Message);
-                await LogWebClientPlayabilityAsync(videoId);
                 throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
             }
             catch (YoutubeExplodeException ex)
@@ -97,66 +143,6 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
         }
 
         throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
-    }
-
-    /// <summary>
-    /// Diagnostico: YoutubeExplode usa el cliente ANDROID_VR para subtitulos, que no
-    /// usa cookies de sesion de navegador (las apps moviles no se autentican asi).
-    /// Esto prueba el cliente WEB, que si usa cookies de forma nativa, para ver si
-    /// con la sesion autenticada esquiva el "Sign in to confirm you're not a bot".
-    /// </summary>
-    private async Task LogWebClientPlayabilityAsync(string videoId)
-    {
-        try
-        {
-            var cookieContainer = new CookieContainer();
-            foreach (var cookie in _cookies)
-                cookieContainer.Add(cookie);
-
-            using var handler = new HttpClientHandler { CookieContainer = cookieContainer, UseCookies = true };
-            using var http = new HttpClient(handler);
-            http.DefaultRequestHeaders.Add(
-                "User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-
-            var body = $$"""
-            {
-              "videoId": "{{videoId}}",
-              "context": {
-                "client": {
-                  "clientName": "WEB",
-                  "clientVersion": "2.20240101.00.00",
-                  "hl": "en",
-                  "gl": "US"
-                }
-              }
-            }
-            """;
-
-            using var request = new HttpRequestMessage(
-                HttpMethod.Post,
-                "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8")
-            {
-                Content = new StringContent(body, Encoding.UTF8, "application/json")
-            };
-
-            using var response = await http.SendAsync(request);
-            var json = await response.Content.ReadAsStringAsync();
-
-            using var doc = JsonDocument.Parse(json);
-            var playability = doc.RootElement.GetProperty("playabilityStatus");
-            var status = playability.TryGetProperty("status", out var s) ? s.GetString() : null;
-            var reason = playability.TryGetProperty("reason", out var r) ? r.GetString() : null;
-            var hasCaptions = doc.RootElement.TryGetProperty("captions", out _);
-
-            _logger.LogWarning(
-                "Diagnostico playability YouTube {VideoId} [WEB+cookies]: status={Status} reason={Reason} hasCaptions={HasCaptions}",
-                videoId, status, reason, hasCaptions);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "No se pudo obtener el diagnostico [WEB+cookies] para {VideoId}", videoId);
-        }
     }
 
     private static string ExtractVideoId(string url)
