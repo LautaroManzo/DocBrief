@@ -131,10 +131,7 @@ builder.Services.AddHttpClient<IUrlContentFetcher, UrlContentFetcher>(client =>
 })
 .ConfigurePrimaryHttpMessageHandler(SsrfSafeHttpClientHandler.Create);
 
-builder.Services.AddHttpClient<IYouTubeTranscriptFetcher, YouTubeTranscriptFetcher>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(20);
-});
+builder.Services.AddScoped<IYouTubeTranscriptFetcher, YouTubeTranscriptFetcher>();
 
 // MediatR
 builder.Services.AddMediatR(cfg =>
