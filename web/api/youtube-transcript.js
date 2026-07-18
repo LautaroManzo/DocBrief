@@ -1,8 +1,15 @@
+import chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer-core";
+
+export const config = { maxDuration: 60 };
+
 // Funcion serverless de Vercel: obtiene la transcripcion de un video de YouTube.
-// Existe porque desde la IP de datacenter de Render, YouTube bloquea las requests
-// con "Sign in to confirm you're not a bot" (confirmado: pasa incluso con cookies
-// de una cuenta autenticada, es un bloqueo a nivel de IP). Vercel corre en una red
-// distinta, asi que el backend llama a este endpoint como alternativa.
+// Existe porque YouTube bloquea las requests HTTP simples (sin motor JS) con
+// "Sign in to confirm you're not a bot" — confirmado que pasa incluso con cookies
+// de una cuenta autenticada y desde distintos proveedores cloud (Render y Vercel),
+// asi que no es un tema de reputacion de IP sino de un desafio en JavaScript que
+// solo un navegador real puede resolver. Por eso se usa un Chromium headless real
+// (@sparticuz/chromium, pensado para funciones serverless) en vez de un fetch.
 export default async function handler(req, res) {
   const videoId = req.method === "GET" ? req.query.videoId : req.body?.videoId;
 
@@ -11,32 +18,26 @@ export default async function handler(req, res) {
     return;
   }
 
+  let browser;
+
   try {
-    const playerResponse = await fetch("https://www.youtube.com/youtubei/v1/player", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent":
-          "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip",
-      },
-      body: JSON.stringify({
-        videoId,
-        contentCheckOk: true,
-        context: {
-          client: {
-            clientName: "ANDROID_VR",
-            clientVersion: "1.60.19",
-            deviceMake: "Oculus",
-            deviceModel: "Quest 3",
-            osName: "Android",
-            osVersion: "12L",
-            platform: "MOBILE",
-            hl: "en",
-            gl: "US",
-          },
-        },
-      }),
-    }).then((r) => r.json());
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    );
+
+    await page.goto(`https://www.youtube.com/watch?v=${videoId}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+
+    const playerResponse = await page.evaluate(() => window.ytInitialPlayerResponse ?? null);
 
     const status = playerResponse?.playabilityStatus?.status;
     if (status !== "OK") {
@@ -53,7 +54,13 @@ export default async function handler(req, res) {
     }
 
     const track = tracks.find((t) => t.languageCode?.startsWith("en")) ?? tracks[0];
-    const captionsXml = await fetch(track.baseUrl).then((r) => r.text());
+
+    // Se pide dentro del contexto de la pagina para que viaje con la sesion/cookies
+    // que genero el propio navegador al cargar youtube.com, no un fetch aislado.
+    const captionsXml = await page.evaluate(async (url) => {
+      const response = await fetch(url);
+      return response.text();
+    }, track.baseUrl);
 
     const text = captionsXml
       .replace(/<[^>]+>/g, " ")
@@ -69,7 +76,9 @@ export default async function handler(req, res) {
     }
 
     res.status(200).json({ text });
-  } catch {
-    res.status(502).json({ error: "No pudimos comunicarnos con YouTube." });
+  } catch (err) {
+    res.status(502).json({ error: "No pudimos comunicarnos con YouTube.", detail: String(err?.message ?? err) });
+  } finally {
+    await browser?.close();
   }
 }
