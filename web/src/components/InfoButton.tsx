@@ -32,33 +32,35 @@ export function InfoButton() {
       {open && (
         <div className="info-overlay" onClick={() => setOpen(false)}>
           <div className="info-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="info-modal-header">
-              <h2>¿Qué es "Te lo resumo"?</h2>
-              <button className="info-close" onClick={() => setOpen(false)} aria-label="Cerrar">
-                ✕
-              </button>
+            <div className="info-modal-content">
+              <div className="info-modal-header">
+                <h2>Te lo resumo</h2>
+                <button className="info-close" onClick={() => setOpen(false)} aria-label="Cerrar">
+                  ✕
+                </button>
+              </div>
+
+              <p>Una herramienta que convierte documentos largos en resúmenes claros usando IA.</p>
+
+              <h3>¿Qué podés resumir?</h3>
+              <ul>
+                <li>Archivos PDF y Word</li>
+                <li>Texto pegado directamente</li>
+                <li>Links a artículos o páginas web</li>
+                <li>Videos de YouTube</li>
+              </ul>
+
+              <h3>Tipos de resumen</h3>
+              <ul>
+                <li>
+                  <strong>Básico</strong>: una síntesis clara y concisa de lo esencial.
+                </li>
+                <li>
+                  <strong>Plan de estudio</strong>: material completo para aprender, con secciones
+                  organizadas, términos clave y preguntas de repaso con respuestas.
+                </li>
+              </ul>
             </div>
-
-            <p>Una herramienta que convierte documentos largos en resúmenes claros usando IA.</p>
-
-            <h3>¿Qué podés resumir?</h3>
-            <ul>
-              <li>Archivos PDF y Word</li>
-              <li>Texto pegado directamente</li>
-              <li>Links a artículos o páginas web</li>
-              <li>Videos de YouTube</li>
-            </ul>
-
-            <h3>Tipos de resumen</h3>
-            <ul>
-              <li>
-                <strong>Básico</strong>: una síntesis clara y concisa de lo esencial.
-              </li>
-              <li>
-                <strong>Plan de estudio</strong>: material completo para aprender, con secciones
-                organizadas, términos clave y preguntas de repaso con respuestas.
-              </li>
-            </ul>
           </div>
         </div>
       )}
