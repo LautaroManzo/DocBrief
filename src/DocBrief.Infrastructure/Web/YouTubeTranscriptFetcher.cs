@@ -1,3 +1,6 @@
+using System.Net;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using DocBrief.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
@@ -28,6 +31,7 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
 
     private readonly YoutubeClient _youtubeClient;
     private readonly ILogger<YouTubeTranscriptFetcher> _logger;
+    private readonly List<Cookie> _cookies;
 
     public YouTubeTranscriptFetcher(IConfiguration configuration, ILogger<YouTubeTranscriptFetcher> logger)
     {
@@ -36,12 +40,13 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
         var cookiesFile = configuration["YouTube:CookiesFile"];
         if (!string.IsNullOrWhiteSpace(cookiesFile))
         {
-            var cookies = NetscapeCookieParser.Parse(cookiesFile);
-            _youtubeClient = new YoutubeClient(cookies);
-            _logger.LogInformation("YouTubeTranscriptFetcher inicializado con {Count} cookies de autenticacion.", cookies.Count);
+            _cookies = NetscapeCookieParser.Parse(cookiesFile);
+            _youtubeClient = new YoutubeClient(_cookies);
+            _logger.LogInformation("YouTubeTranscriptFetcher inicializado con {Count} cookies de autenticacion.", _cookies.Count);
         }
         else
         {
+            _cookies = [];
             _youtubeClient = new YoutubeClient();
         }
     }
@@ -81,6 +86,7 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
             catch (VideoUnavailableException ex)
             {
                 _logger.LogError(ex, "YouTube VideoUnavailableException final para {VideoId}: {Message}", videoId, ex.Message);
+                await LogWebClientPlayabilityAsync(videoId);
                 throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
             }
             catch (YoutubeExplodeException ex)
@@ -91,6 +97,66 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
         }
 
         throw new ArgumentException("No pudimos acceder a ese video en este momento. Puede ser una restriccion temporal — proba de nuevo en unos minutos o con otro video.");
+    }
+
+    /// <summary>
+    /// Diagnostico: YoutubeExplode usa el cliente ANDROID_VR para subtitulos, que no
+    /// usa cookies de sesion de navegador (las apps moviles no se autentican asi).
+    /// Esto prueba el cliente WEB, que si usa cookies de forma nativa, para ver si
+    /// con la sesion autenticada esquiva el "Sign in to confirm you're not a bot".
+    /// </summary>
+    private async Task LogWebClientPlayabilityAsync(string videoId)
+    {
+        try
+        {
+            var cookieContainer = new CookieContainer();
+            foreach (var cookie in _cookies)
+                cookieContainer.Add(cookie);
+
+            using var handler = new HttpClientHandler { CookieContainer = cookieContainer, UseCookies = true };
+            using var http = new HttpClient(handler);
+            http.DefaultRequestHeaders.Add(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+            var body = $$"""
+            {
+              "videoId": "{{videoId}}",
+              "context": {
+                "client": {
+                  "clientName": "WEB",
+                  "clientVersion": "2.20240101.00.00",
+                  "hl": "en",
+                  "gl": "US"
+                }
+              }
+            }
+            """;
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                "https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8")
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json")
+            };
+
+            using var response = await http.SendAsync(request);
+            var json = await response.Content.ReadAsStringAsync();
+
+            using var doc = JsonDocument.Parse(json);
+            var playability = doc.RootElement.GetProperty("playabilityStatus");
+            var status = playability.TryGetProperty("status", out var s) ? s.GetString() : null;
+            var reason = playability.TryGetProperty("reason", out var r) ? r.GetString() : null;
+            var hasCaptions = doc.RootElement.TryGetProperty("captions", out _);
+
+            _logger.LogWarning(
+                "Diagnostico playability YouTube {VideoId} [WEB+cookies]: status={Status} reason={Reason} hasCaptions={HasCaptions}",
+                videoId, status, reason, hasCaptions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo obtener el diagnostico [WEB+cookies] para {VideoId}", videoId);
+        }
     }
 
     private static string ExtractVideoId(string url)
