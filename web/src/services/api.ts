@@ -5,10 +5,12 @@ const API_URL = import.meta.env.VITE_API_URL;
 interface SummaryOptions {
   summaryMode: SummaryMode;
   outputLanguage: OutputLanguage;
+  includeConceptMap?: boolean;
 }
 
 export interface SummaryResponse {
   summary: string;
+  sourceTitle?: string;
 }
 
 async function assertOk(response: Response) {
@@ -43,6 +45,7 @@ export async function summarizeText(text: string, options: SummaryOptions): Prom
       text,
       summaryMode: options.summaryMode,
       outputLanguage: options.outputLanguage,
+      includeConceptMap: options.includeConceptMap ?? false,
     }),
   });
 
@@ -56,6 +59,7 @@ export async function summarizeFile(file: File, options: SummaryOptions): Promis
   formData.append("file", file);
   formData.append("summaryMode", options.summaryMode);
   formData.append("outputLanguage", options.outputLanguage);
+  formData.append("includeConceptMap", String(options.includeConceptMap ?? false));
 
   const response = await fetch(`${API_URL}/api/summary/file`, {
     method: "POST",
@@ -75,6 +79,7 @@ export async function summarizeUrl(url: string, options: SummaryOptions): Promis
       url,
       summaryMode: options.summaryMode,
       outputLanguage: options.outputLanguage,
+      includeConceptMap: options.includeConceptMap ?? false,
     }),
   });
 

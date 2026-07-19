@@ -18,12 +18,12 @@ public class SemanticKernelSummaryService : ISummaryService
         _kernel = kernel;
     }
 
-    public async Task<string> SummarizeAsync(string text, string summaryMode, string outputLanguage)
+    public async Task<string> SummarizeAsync(string text, string summaryMode, string outputLanguage, bool includeConceptMap = false)
     {
         var languageName = LanguageNames.GetValueOrDefault(outputLanguage, LanguageNames["es"]);
 
         var prompt = summaryMode == "estudio"
-            ? BuildStudyPrompt(languageName)
+            ? BuildStudyPrompt(languageName, includeConceptMap)
             : BuildBasicPrompt(languageName);
 
         var function = _kernel.CreateFunctionFromPrompt(prompt);
@@ -58,8 +58,25 @@ public class SemanticKernelSummaryService : ISummaryService
 
     // Modo "Plan de estudio": material de estudio completo aplicando tecnicas de aprendizaje
     // (chunking, elaboracion, glosario y active recall).
-    private static string BuildStudyPrompt(string languageName)
+    private static string BuildStudyPrompt(string languageName, bool includeConceptMap)
     {
+        var conceptMapInstructions = includeConceptMap
+            ? """
+
+                4. Una seccion "## Mapa conceptual" con un diagrama mermaid tipo mindmap
+                   de los temas principales y como se relacionan. Formato exacto:
+                   - Un bloque de codigo que empieza con ```mermaid y termina con ```.
+                   - Adentro, primera linea "mindmap".
+                   - Segunda linea con el nodo raiz: dos espacios de indentacion, luego
+                     root((Tema principal)).
+                   - Debajo, los subtemas indentados con 2 espacios mas por cada nivel
+                     (maximo 3 niveles de profundidad).
+                   - Los textos de los nodos deben ser cortos (2-5 palabras), sin parentesis,
+                     comillas, dos puntos ni **negrita** adentro, porque rompen el diagrama.
+
+                """
+            : "\n";
+
         return """
             Sos un tutor que arma un plan de estudio a partir de un documento, para que el
             usuario pueda aprenderlo en profundidad. Escribi todo en {LANGUAGE}.
@@ -85,18 +102,21 @@ public class SemanticKernelSummaryService : ISummaryService
                y usa listas con "- " cuando ayude a la lectura.
             3. Una seccion "## Terminos clave" con los conceptos mas importantes y su
                definicion breve, en formato "- **Termino**: definicion".
-            4. Una seccion "## Preguntas de repaso" con 4-5 preguntas para autoevaluarse,
-               cada una seguida de su respuesta. Formato por pregunta: la pregunta en negrita
-               "**1. ¿Pregunta?**", luego una linea en blanco, y despues la respuesta. Dejá
-               una linea en blanco entre cada par de pregunta y respuesta.
+            {CONCEPT_MAP}
+            Por ultimo, una seccion "## Preguntas de repaso" con 4-5 preguntas para
+               autoevaluarse, cada una seguida de su respuesta. Formato por pregunta: la
+               pregunta en negrita "**1. ¿Pregunta?**", luego una linea en blanco, y despues
+               la respuesta. Dejá una linea en blanco entre cada par de pregunta y respuesta.
 
-            No uses tablas ni elementos de Markdown fuera de los mencionados.
+            No uses tablas ni elementos de Markdown fuera de los mencionados (fuera del
+            bloque mermaid del mapa conceptual, si se pidio).
 
             Texto:
             {{$input}}
 
             Plan de estudio:
             """
-            .Replace("{LANGUAGE}", languageName);
+            .Replace("{LANGUAGE}", languageName)
+            .Replace("{CONCEPT_MAP}", conceptMapInstructions);
     }
 }

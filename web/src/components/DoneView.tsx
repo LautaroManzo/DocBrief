@@ -1,4 +1,4 @@
-import { downloadAsPdf } from "../utils/download";
+import { buildPdfFilename, downloadAsPdf } from "../utils/download";
 import { SummaryContent } from "./SummaryContent";
 
 interface DoneViewProps {
@@ -25,11 +25,13 @@ export function DoneView({ summary, sourceName, sourceMeta, onReset }: DoneViewP
       </div>
 
       <div className="summary-card">
-        <SummaryContent summary={summary} />
+        <div className="summary-card-content">
+          <SummaryContent summary={summary} />
+        </div>
       </div>
 
       <div className="done-actions">
-        <button className="btn-primary" onClick={() => downloadAsPdf(summary, "resumen-docbrief.pdf")}>
+        <button className="btn-primary" onClick={() => void downloadAsPdf(summary, buildPdfFilename(sourceName))}>
           Descargar PDF
         </button>
       </div>

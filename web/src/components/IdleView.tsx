@@ -19,6 +19,8 @@ interface IdleViewProps {
   onSummaryModeChange: (value: SummaryMode) => void;
   outputLanguage: OutputLanguage;
   onOutputLanguageChange: (value: OutputLanguage) => void;
+  includeConceptMap: boolean;
+  onIncludeConceptMapChange: (value: boolean) => void;
   pastedText: string;
   onPastedTextChange: (value: string) => void;
   pastedUrl: string;
@@ -39,6 +41,8 @@ export function IdleView({
   onSummaryModeChange,
   outputLanguage,
   onOutputLanguageChange,
+  includeConceptMap,
+  onIncludeConceptMapChange,
   pastedText,
   onPastedTextChange,
   pastedUrl,
@@ -98,6 +102,17 @@ export function IdleView({
           />
         </div>
       </div>
+
+      {summaryMode === "estudio" && (
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={includeConceptMap}
+            onChange={(e) => onIncludeConceptMapChange(e.target.checked)}
+          />
+          Incluir mapa conceptual
+        </label>
+      )}
 
       {inputMode === "file" && (
         <div

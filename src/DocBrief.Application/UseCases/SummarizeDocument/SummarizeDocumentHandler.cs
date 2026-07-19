@@ -25,29 +25,46 @@ public class SummarizeDocumentHandler : IRequestHandler<SummarizeDocumentCommand
     public async Task<SummarizeDocumentResult> Handle(SummarizeDocumentCommand request, CancellationToken cancellationToken)
     {
         string extractedText;
+        string? sourceTitle = null;
 
         try
         {
-            extractedText = request.ContentType switch
+            switch (request.ContentType)
             {
-                "file" => await _parserResolver.Resolve(request.File!.FileName).ParseAsync(request.File!),
-                "text" => request.Text!,
-                "url" => await FetchUrlContentAsync(request.Url!),
-                _ => throw new ArgumentException($"Unsupported content type: {request.ContentType}")
-            };
+                case "file":
+                    extractedText = await _parserResolver.Resolve(request.File!.FileName).ParseAsync(request.File!);
+                    break;
+                case "text":
+                    extractedText = request.Text!;
+                    break;
+                case "url":
+                    (extractedText, sourceTitle) = await FetchUrlContentAsync(request.Url!);
+                    break;
+                default:
+                    throw new ArgumentException($"Unsupported content type: {request.ContentType}");
+            }
         }
         catch (Exception ex) when (request.ContentType == "file" && ex is not ArgumentException)
         {
             throw new ArgumentException("No pudimos leer ese archivo. Verificá que no este daniado o corrupto.", ex);
         }
 
-        var summaryContent = await _summaryService.SummarizeAsync(extractedText, request.SummaryMode, request.OutputLanguage);
+        var summaryContent = await _summaryService.SummarizeAsync(
+            extractedText, request.SummaryMode, request.OutputLanguage, request.IncludeConceptMap);
 
-        return new SummarizeDocumentResult(summaryContent);
+        return new SummarizeDocumentResult(summaryContent, sourceTitle);
     }
 
-    private Task<string> FetchUrlContentAsync(string url) =>
-        _youTubeTranscriptFetcher.IsYouTubeUrl(url)
-            ? _youTubeTranscriptFetcher.FetchTranscriptAsync(url)
-            : _urlContentFetcher.FetchTextAsync(url);
+    private async Task<(string Text, string? Title)> FetchUrlContentAsync(string url)
+    {
+        if (_youTubeTranscriptFetcher.IsYouTubeUrl(url))
+        {
+            var transcript = await _youTubeTranscriptFetcher.FetchTranscriptAsync(url);
+            var title = await _youTubeTranscriptFetcher.GetTitleAsync(url);
+            return (transcript, title);
+        }
+
+        var content = await _urlContentFetcher.FetchAsync(url);
+        return (content.Text, content.Title);
+    }
 }

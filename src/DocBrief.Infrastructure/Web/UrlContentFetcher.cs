@@ -19,7 +19,7 @@ public class UrlContentFetcher : IUrlContentFetcher
         _httpClient = httpClient;
     }
 
-    public async Task<string> FetchTextAsync(string url)
+    public async Task<UrlContent> FetchAsync(string url)
     {
         var uri = ValidateUrl(url);
 
@@ -34,6 +34,9 @@ public class UrlContentFetcher : IUrlContentFetcher
         var document = new HtmlDocument();
         document.LoadHtml(html);
 
+        var title = document.DocumentNode.SelectSingleNode("//title")?.InnerText;
+        title = string.IsNullOrWhiteSpace(title) ? null : WebUtility.HtmlDecode(title).Trim();
+
         var removable = document.DocumentNode.SelectNodes(string.Join("|", RemovableTags.Select(t => $"//{t}")));
         if (removable is not null)
         {
@@ -46,7 +49,7 @@ public class UrlContentFetcher : IUrlContentFetcher
         var text = WebUtility.HtmlDecode(document.DocumentNode.InnerText);
         text = Regex.Replace(text, @"\s+", " ").Trim();
 
-        return text;
+        return new UrlContent(text, title);
     }
 
     private static Uri ValidateUrl(string url)

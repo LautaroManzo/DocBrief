@@ -4,8 +4,9 @@ export interface TextRun {
 }
 
 export interface Block {
-  type: "heading" | "paragraph" | "bullet";
+  type: "heading" | "paragraph" | "bullet" | "mermaid";
   runs: TextRun[];
+  code?: string;
 }
 
 export function parseSummaryMarkdown(markdown: string): Block[] {
@@ -20,10 +21,28 @@ export function parseSummaryMarkdown(markdown: string): Block[] {
     }
   }
 
-  for (const rawLine of markdown.split("\n")) {
-    const line = rawLine.trim();
+  const lines = markdown.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
     if (line === "") {
       flushParagraph();
+      continue;
+    }
+
+    const fenceMatch = line.match(/^```(\w*)/);
+    if (fenceMatch) {
+      flushParagraph();
+      const isMermaid = fenceMatch[1].toLowerCase() === "mermaid";
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      if (isMermaid) {
+        blocks.push({ type: "mermaid", runs: [], code: codeLines.join("\n").trim() });
+      }
       continue;
     }
 

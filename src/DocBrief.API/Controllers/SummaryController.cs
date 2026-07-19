@@ -30,6 +30,7 @@ public class SummaryController : ControllerBase
     /// <param name="file">Archivo a resumir (PDF o DOCX, maximo 10 MB).</param>
     /// <param name="summaryMode">Modo de resumen: "basico" o "estudio".</param>
     /// <param name="outputLanguage">Idioma del resumen: "es" o "en".</param>
+    /// <param name="includeConceptMap">Si se incluye un mapa conceptual (solo aplica en modo "estudio").</param>
     /// <response code="200">Resumen generado correctamente.</response>
     /// <response code="400">El archivo es invalido, no tiene un formato soportado o supera los 10 MB.</response>
     [HttpPost("file")]
@@ -39,7 +40,8 @@ public class SummaryController : ControllerBase
     public async Task<IActionResult> SummarizeFile(
         IFormFile file,
         [FromForm] string summaryMode = "basico",
-        [FromForm] string outputLanguage = "es")
+        [FromForm] string outputLanguage = "es",
+        [FromForm] bool includeConceptMap = false)
     {
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
@@ -51,7 +53,7 @@ public class SummaryController : ControllerBase
 
         try
         {
-            var command = new SummarizeDocumentCommand(file, null, null, "file", summaryMode, outputLanguage);
+            var command = new SummarizeDocumentCommand(file, null, null, "file", summaryMode, outputLanguage, includeConceptMap);
             var result = await _mediator.Send(command);
 
             return Ok(result);
@@ -85,7 +87,8 @@ public class SummaryController : ControllerBase
             null,
             "text",
             request.SummaryMode ?? "basico",
-            request.OutputLanguage ?? "es");
+            request.OutputLanguage ?? "es",
+            request.IncludeConceptMap ?? false);
 
         var result = await _mediator.Send(command);
 
@@ -118,7 +121,8 @@ public class SummaryController : ControllerBase
                 request.Url,
                 "url",
                 request.SummaryMode ?? "basico",
-                request.OutputLanguage ?? "es");
+                request.OutputLanguage ?? "es",
+                request.IncludeConceptMap ?? false);
 
             var result = await _mediator.Send(command);
 
@@ -141,7 +145,8 @@ public class SummaryController : ControllerBase
 /// <param name="Text">Texto a resumir.</param>
 /// <param name="SummaryMode">Modo de resumen: "basico" o "estudio". Por defecto "basico".</param>
 /// <param name="OutputLanguage">Idioma del resumen: "es" o "en". Por defecto "es".</param>
-public record TextRequest(string Text, string? SummaryMode, string? OutputLanguage);
+/// <param name="IncludeConceptMap">Si se incluye un mapa conceptual (solo aplica en modo "estudio").</param>
+public record TextRequest(string Text, string? SummaryMode, string? OutputLanguage, bool? IncludeConceptMap = null);
 
 /// <summary>
 /// Datos para resumir una pagina web.
@@ -149,4 +154,5 @@ public record TextRequest(string Text, string? SummaryMode, string? OutputLangua
 /// <param name="Url">URL de la pagina a resumir.</param>
 /// <param name="SummaryMode">Modo de resumen: "basico" o "estudio". Por defecto "basico".</param>
 /// <param name="OutputLanguage">Idioma del resumen: "es" o "en". Por defecto "es".</param>
-public record UrlRequest(string Url, string? SummaryMode, string? OutputLanguage);
+/// <param name="IncludeConceptMap">Si se incluye un mapa conceptual (solo aplica en modo "estudio").</param>
+public record UrlRequest(string Url, string? SummaryMode, string? OutputLanguage, bool? IncludeConceptMap = null);

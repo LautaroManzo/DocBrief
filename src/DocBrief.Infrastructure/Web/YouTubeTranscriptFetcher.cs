@@ -41,6 +41,28 @@ public class YouTubeTranscriptFetcher : IYouTubeTranscriptFetcher
 
     public bool IsYouTubeUrl(string url) => VideoUrlRegex.IsMatch(url);
 
+    public async Task<string?> GetTitleAsync(string url)
+    {
+        try
+        {
+            var response = await _http.GetAsync(
+                $"https://www.youtube.com/oembed?url={Uri.EscapeDataString(url)}&format=json");
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+
+            return doc.RootElement.TryGetProperty("title", out var title) ? title.GetString() : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo obtener el titulo del video para {Url}", url);
+            return null;
+        }
+    }
+
     public Task<string> FetchTranscriptAsync(string url)
     {
         return !string.IsNullOrWhiteSpace(_supadataApiKey)

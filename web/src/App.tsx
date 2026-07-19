@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { ApiDocsLink } from "./components/ApiDocsLink";
 import { DoneView } from "./components/DoneView";
 import { ErrorView } from "./components/ErrorView";
 import { ACCEPTED_EXTENSIONS, IdleView, MAX_FILE_SIZE, MAX_TEXT_LENGTH } from "./components/IdleView";
@@ -14,6 +13,7 @@ function App() {
   const [inputMode, setInputMode] = useState<InputMode>("file");
   const [summaryMode, setSummaryMode] = useState<SummaryMode>("basico");
   const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>("es");
+  const [includeConceptMap, setIncludeConceptMap] = useState(false);
   const [pastedText, setPastedText] = useState("");
   const [pastedUrl, setPastedUrl] = useState("");
   const [progress, setProgress] = useState(0);
@@ -60,7 +60,7 @@ function App() {
     startProgressAnimation();
 
     try {
-      const result = await summarizeFile(file, { summaryMode, outputLanguage });
+      const result = await summarizeFile(file, { summaryMode, outputLanguage, includeConceptMap });
       stopProgressAnimation();
       setProgress(100);
       setSummary(result.summary);
@@ -89,7 +89,7 @@ function App() {
     startProgressAnimation();
 
     try {
-      const result = await summarizeText(pastedText, { summaryMode, outputLanguage });
+      const result = await summarizeText(pastedText, { summaryMode, outputLanguage, includeConceptMap });
       stopProgressAnimation();
       setProgress(100);
       setSummary(result.summary);
@@ -112,10 +112,11 @@ function App() {
     startProgressAnimation();
 
     try {
-      const result = await summarizeUrl(pastedUrl, { summaryMode, outputLanguage });
+      const result = await summarizeUrl(pastedUrl, { summaryMode, outputLanguage, includeConceptMap });
       stopProgressAnimation();
       setProgress(100);
       setSummary(result.summary);
+      if (result.sourceTitle) setSourceName(result.sourceTitle);
       setPhase("done");
     } catch (error) {
       handleError(error);
@@ -152,6 +153,8 @@ function App() {
             onSummaryModeChange={setSummaryMode}
             outputLanguage={outputLanguage}
             onOutputLanguageChange={setOutputLanguage}
+            includeConceptMap={includeConceptMap}
+            onIncludeConceptMapChange={setIncludeConceptMap}
             pastedText={pastedText}
             onPastedTextChange={setPastedText}
             pastedUrl={pastedUrl}
@@ -176,7 +179,6 @@ function App() {
             onReset={reset}
           />
         )}
-        <ApiDocsLink />
       </div>
     </main>
   );

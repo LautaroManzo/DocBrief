@@ -9,6 +9,7 @@ public record SummarizeDocumentCommand(
     string? Url,
     string ContentType,
     string SummaryMode,
-    string OutputLanguage) : IRequest<SummarizeDocumentResult>;
+    string OutputLanguage,
+    bool IncludeConceptMap = false) : IRequest<SummarizeDocumentResult>;
 
-public record SummarizeDocumentResult(string Summary);
+public record SummarizeDocumentResult(string Summary, string? SourceTitle = null);

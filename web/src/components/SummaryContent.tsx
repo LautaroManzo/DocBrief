@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { parseSummaryMarkdown, type TextRun } from "../utils/markdown";
+import { MermaidDiagram } from "./MermaidDiagram";
 
 interface SummaryContentProps {
   summary: string;
@@ -42,7 +43,9 @@ export function SummaryContent({ summary }: SummaryContentProps) {
 
     flushBullets(`ul-${i}`);
 
-    if (block.type === "heading") {
+    if (block.type === "mermaid") {
+      if (block.code) elements.push(<MermaidDiagram key={i} code={block.code} />);
+    } else if (block.type === "heading") {
       elements.push(
         <h3 key={i}>
           <Runs runs={block.runs} />
