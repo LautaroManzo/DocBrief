@@ -68,7 +68,8 @@ public class SemanticKernelSummaryService : ISummaryService
             - Chunking: dividi el contenido en secciones tematicas claras y jerarquicas.
             - Elaboracion: no solo enumeres, explica cada concepto con contexto, el "por que"
               y ejemplos cuando ayuden a entender.
-            - Glosario: destaca y defini los terminos clave para repaso rapido.
+            - Glosario: destaca y defini los terminos clave para repaso rapido, nombrando el
+              autor de ese termino cuando corresponda.
             - Active recall: cerra con preguntas de autoevaluacion y sus respuestas, la tecnica
               mas efectiva para fijar lo aprendido.
 
