@@ -1,19 +1,21 @@
 import { useRef, useState } from "react";
+import { ACCEPTED_EXTENSIONS, MAX_FILE_SIZE, MAX_TEXT_LENGTH } from "./constants";
 import { DoneView } from "./components/DoneView";
 import { ErrorView } from "./components/ErrorView";
-import { ACCEPTED_EXTENSIONS, IdleView, MAX_FILE_SIZE, MAX_TEXT_LENGTH } from "./components/IdleView";
-import { InfoButton } from "./components/InfoButton";
 import { ProcessingView } from "./components/ProcessingView";
-import { ThemeToggle } from "./components/ThemeToggle";
+import { StepContent } from "./components/StepContent";
+import { StepProgressBar } from "./components/StepProgressBar";
+import { StepSource } from "./components/StepSource";
+import { WizardHeader } from "./components/WizardHeader";
 import { summarizeFile, summarizeText, summarizeUrl } from "./services/api";
 import type { InputMode, OutputLanguage, Phase, SummaryMode } from "./types";
 
 function App() {
-  const [phase, setPhase] = useState<Phase>("idle");
+  const [phase, setPhase] = useState<Phase>("step1");
   const [inputMode, setInputMode] = useState<InputMode>("file");
   const [summaryMode, setSummaryMode] = useState<SummaryMode>("basico");
   const [outputLanguage, setOutputLanguage] = useState<OutputLanguage>("es");
-  const [includeConceptMap, setIncludeConceptMap] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState("");
   const [pastedUrl, setPastedUrl] = useState("");
   const [progress, setProgress] = useState(0);
@@ -24,6 +26,8 @@ function App() {
   const [sourceMeta, setSourceMeta] = useState("");
 
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const step = phase === "step1" ? 1 : phase === "step2" ? 2 : 3;
 
   function startProgressAnimation() {
     setProgress(0);
@@ -45,7 +49,7 @@ function App() {
     setPhase("error");
   }
 
-  async function handleSubmitFile(file: File) {
+  async function submitFile(file: File) {
     const extension = "." + file.name.split(".").pop()?.toLowerCase();
 
     if (file.size > MAX_FILE_SIZE || !ACCEPTED_EXTENSIONS.includes(extension)) {
@@ -60,7 +64,7 @@ function App() {
     startProgressAnimation();
 
     try {
-      const result = await summarizeFile(file, { summaryMode, outputLanguage, includeConceptMap });
+      const result = await summarizeFile(file, { summaryMode, outputLanguage, includeConceptMap: summaryMode === "estudio" });
       stopProgressAnimation();
       setProgress(100);
       setSummary(result.summary);
@@ -70,7 +74,7 @@ function App() {
     }
   }
 
-  async function handleSubmitText() {
+  async function submitText() {
     if (!pastedText.trim()) {
       setErrorMessage("No encontramos texto para resumir. Pegá o escribí contenido antes de continuar.");
       setPhase("error");
@@ -89,7 +93,7 @@ function App() {
     startProgressAnimation();
 
     try {
-      const result = await summarizeText(pastedText, { summaryMode, outputLanguage, includeConceptMap });
+      const result = await summarizeText(pastedText, { summaryMode, outputLanguage, includeConceptMap: summaryMode === "estudio" });
       stopProgressAnimation();
       setProgress(100);
       setSummary(result.summary);
@@ -99,7 +103,7 @@ function App() {
     }
   }
 
-  async function handleSubmitUrl() {
+  async function submitUrl() {
     if (!pastedUrl.trim()) {
       setErrorMessage("Pegá una URL valida antes de continuar.");
       setPhase("error");
@@ -112,7 +116,7 @@ function App() {
     startProgressAnimation();
 
     try {
-      const result = await summarizeUrl(pastedUrl, { summaryMode, outputLanguage, includeConceptMap });
+      const result = await summarizeUrl(pastedUrl, { summaryMode, outputLanguage, includeConceptMap: summaryMode === "estudio" });
       stopProgressAnimation();
       setProgress(100);
       setSummary(result.summary);
@@ -123,8 +127,35 @@ function App() {
     }
   }
 
-  function reset() {
-    setPhase("idle");
+  function goNext() {
+    if (phase === "step1") {
+      setPhase("step2");
+      return;
+    }
+
+    if (phase === "step2") {
+      if (inputMode === "file") {
+        if (!selectedFile) {
+          setErrorMessage("Elegí un archivo antes de continuar.");
+          setPhase("error");
+          return;
+        }
+        void submitFile(selectedFile);
+      } else if (inputMode === "text") {
+        void submitText();
+      } else {
+        void submitUrl();
+      }
+    }
+  }
+
+  function goBack() {
+    if (phase === "step2") setPhase("step1");
+  }
+
+  function restart() {
+    setPhase("step1");
+    setSelectedFile(null);
     setPastedText("");
     setPastedUrl("");
     setSummary("");
@@ -132,53 +163,60 @@ function App() {
   }
 
   function retryFromError() {
-    setPhase("idle");
+    setPhase("step2");
   }
-
-  const processingTitle =
-    inputMode === "text" ? "Analizando tu texto…" : inputMode === "url" ? "Leyendo la pagina…" : "Leyendo tu documento…";
-  const processingSubtitle =
-    inputMode === "text" ? "Procesando el texto pegado · esto toma unos segundos" : `${sourceName} · esto toma unos segundos`;
 
   return (
     <main>
-      <ThemeToggle />
-      <InfoButton />
       <div className="card">
-        {phase === "idle" && (
-          <IdleView
-            inputMode={inputMode}
-            onInputModeChange={setInputMode}
-            summaryMode={summaryMode}
-            onSummaryModeChange={setSummaryMode}
-            outputLanguage={outputLanguage}
-            onOutputLanguageChange={setOutputLanguage}
-            includeConceptMap={includeConceptMap}
-            onIncludeConceptMapChange={setIncludeConceptMap}
-            pastedText={pastedText}
-            onPastedTextChange={setPastedText}
-            pastedUrl={pastedUrl}
-            onPastedUrlChange={setPastedUrl}
-            onSubmitFile={handleSubmitFile}
-            onSubmitText={handleSubmitText}
-            onSubmitUrl={handleSubmitUrl}
-          />
-        )}
+        <WizardHeader />
+        <StepProgressBar step={step} progress={progress} />
 
-        {phase === "processing" && (
-          <ProcessingView title={processingTitle} subtitle={processingSubtitle} progress={progress} />
-        )}
+        <div className="card-body">
+          {phase === "step1" && (
+            <StepSource
+              inputMode={inputMode}
+              onInputModeChange={setInputMode}
+              summaryMode={summaryMode}
+              onSummaryModeChange={setSummaryMode}
+              outputLanguage={outputLanguage}
+              onOutputLanguageChange={setOutputLanguage}
+            />
+          )}
 
-        {phase === "error" && <ErrorView message={errorMessage} onRetry={retryFromError} />}
+          {phase === "step2" && (
+            <StepContent
+              inputMode={inputMode}
+              selectedFile={selectedFile}
+              onSelectedFileChange={setSelectedFile}
+              pastedText={pastedText}
+              onPastedTextChange={setPastedText}
+              pastedUrl={pastedUrl}
+              onPastedUrlChange={setPastedUrl}
+            />
+          )}
 
-        {phase === "done" && (
-          <DoneView
-            summary={summary}
-            sourceName={sourceName}
-            sourceMeta={sourceMeta}
-            onReset={reset}
-          />
-        )}
+          {phase === "processing" && <ProcessingView title="Generando tu resumen…" />}
+
+          {phase === "error" && <ErrorView message={errorMessage} onRetry={retryFromError} />}
+
+          {phase === "done" && (
+            <DoneView summary={summary} sourceName={sourceName} sourceMeta={sourceMeta} onReset={restart} />
+          )}
+
+          {(phase === "step1" || phase === "step2") && (
+            <div className="wizard-nav">
+              {phase === "step2" && (
+                <button className="btn-secondary" onClick={goBack}>
+                  Atrás
+                </button>
+              )}
+              <button className="btn-primary" style={{ marginLeft: "auto" }} onClick={goNext}>
+                {phase === "step2" ? "Resumir" : "Siguiente"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

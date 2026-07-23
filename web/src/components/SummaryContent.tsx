@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { parseSummaryMarkdown, type TextRun } from "../utils/markdown";
-import { MermaidDiagram } from "./MermaidDiagram";
+import { ConceptMapSection } from "./ConceptMapSection";
 
 interface SummaryContentProps {
   summary: string;
@@ -35,16 +35,28 @@ export function SummaryContent({ summary }: SummaryContentProps) {
     bulletBuffer = [];
   }
 
-  blocks.forEach((block, i) => {
+  let i = 0;
+  while (i < blocks.length) {
+    const block = blocks[i];
+
     if (block.type === "bullet") {
       bulletBuffer.push(block.runs);
-      return;
+      i++;
+      continue;
     }
 
     flushBullets(`ul-${i}`);
 
+    if (block.type === "heading" && blocks[i + 1]?.type === "mermaid") {
+      elements.push(
+        <ConceptMapSection key={i} headingRuns={block.runs} code={blocks[i + 1].code ?? ""} />
+      );
+      i += 2;
+      continue;
+    }
+
     if (block.type === "mermaid") {
-      if (block.code) elements.push(<MermaidDiagram key={i} code={block.code} />);
+      // Bloque mermaid sin titulo previo (no deberia pasar, pero por las dudas lo ignoramos).
     } else if (block.type === "heading") {
       elements.push(
         <h3 key={i}>
@@ -58,7 +70,9 @@ export function SummaryContent({ summary }: SummaryContentProps) {
         </p>
       );
     }
-  });
+
+    i++;
+  }
   flushBullets("ul-end");
 
   return <>{elements}</>;

@@ -1,4 +1,4 @@
 export type SummaryMode = "basico" | "estudio";
 export type OutputLanguage = "es" | "en";
 export type InputMode = "file" | "text" | "url";
-export type Phase = "idle" | "processing" | "done" | "error";
+export type Phase = "step1" | "step2" | "processing" | "done" | "error";

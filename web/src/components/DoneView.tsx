@@ -19,9 +19,6 @@ export function DoneView({ summary, sourceName, sourceMeta, onReset }: DoneViewP
             <p className="meta">{sourceMeta}</p>
           </div>
         </div>
-        <button className="reset-link desktop-only" onClick={onReset}>
-          Cargar otro documento
-        </button>
       </div>
 
       <div className="summary-card">
@@ -31,14 +28,13 @@ export function DoneView({ summary, sourceName, sourceMeta, onReset }: DoneViewP
       </div>
 
       <div className="done-actions">
+        <button className="btn-soft" onClick={onReset}>
+          Volver al inicio
+        </button>
         <button className="btn-primary" onClick={() => void downloadAsPdf(summary, buildPdfFilename(sourceName))}>
           Descargar PDF
         </button>
       </div>
-
-      <button className="reset-link mobile-only" onClick={onReset}>
-        Cargar otro documento
-      </button>
     </div>
   );
 }

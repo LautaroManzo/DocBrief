@@ -33,6 +33,23 @@ export async function downloadAsPdf(content: string, filename: string) {
   }
 }
 
+interface RasterizedMermaid {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+async function tryRenderMermaidForPdf(code: string): Promise<RasterizedMermaid | null> {
+  if (!code.trim()) return null;
+
+  try {
+    const svg = await renderMermaidSvg(code, isDarkTheme());
+    return await svgToPng(svg, 5);
+  } catch {
+    return null;
+  }
+}
+
 async function generatePdf(content: string, filename: string) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -81,22 +98,15 @@ async function generatePdf(content: string, filename: string) {
     y += lineHeight;
   }
 
-  async function drawMermaidBlock(code: string) {
-    try {
-      const svg = await renderMermaidSvg(code, isDarkTheme());
-      const { dataUrl, width, height } = await svgToPng(svg, 5);
+  function drawMermaidImage(rendered: RasterizedMermaid) {
+    const availableHeight = pageHeight - y - MARGIN_BOTTOM;
+    const scale = Math.min(maxWidth / rendered.width, availableHeight / rendered.height);
+    const drawWidth = rendered.width * scale;
+    const drawHeight = rendered.height * scale;
+    const x = MARGIN_LEFT + (maxWidth - drawWidth) / 2;
 
-      const availableHeight = pageHeight - y - MARGIN_BOTTOM;
-      const scale = Math.min(maxWidth / width, availableHeight / height);
-      const drawWidth = width * scale;
-      const drawHeight = height * scale;
-      const x = MARGIN_LEFT + (maxWidth - drawWidth) / 2;
-
-      doc.addImage(dataUrl, "PNG", x, y, drawWidth, drawHeight);
-      y += drawHeight + 12;
-    } catch {
-      // Si falla el render del diagrama, seguimos con el resto del PDF sin el.
-    }
+    doc.addImage(rendered.dataUrl, "PNG", x, y, drawWidth, drawHeight);
+    y += drawHeight + 12;
   }
 
   const blocks = parseSummaryMarkdown(content);
@@ -105,13 +115,33 @@ async function generatePdf(content: string, filename: string) {
     const block = blocks[index];
 
     if (block.type === "mermaid") {
-      if (block.code) await drawMermaidBlock(block.code);
-    } else if (block.type === "heading") {
-      const headingText = block.runs.map((run) => run.text).join("");
-      const precedesMermaid = blocks[index + 1]?.type === "mermaid";
-      const isQuestionsSection = /preguntas de repaso/i.test(headingText);
+      // Bloque mermaid sin titulo previo (no deberia pasar) — se ignora.
+      continue;
+    }
 
-      if ((precedesMermaid || isQuestionsSection) && y > MARGIN_TOP) {
+    if (block.type === "heading") {
+      const headingText = block.runs.map((run) => run.text).join("");
+      const nextBlock = blocks[index + 1];
+
+      if (nextBlock?.type === "mermaid") {
+        const rendered = await tryRenderMermaidForPdf(nextBlock.code ?? "");
+        index++; // el bloque mermaid ya se consume aca
+
+        if (!rendered) continue;
+
+        if (y > MARGIN_TOP) {
+          doc.addPage();
+          y = MARGIN_TOP;
+        }
+        ensureSpace(20);
+        drawRuns(block.runs, MARGIN_LEFT, 14, 18, maxWidth, true);
+        y += 2;
+        drawMermaidImage(rendered);
+        continue;
+      }
+
+      const isQuestionsSection = /preguntas de repaso/i.test(headingText);
+      if (isQuestionsSection && y > MARGIN_TOP) {
         doc.addPage();
         y = MARGIN_TOP;
       } else if (index > 0) {

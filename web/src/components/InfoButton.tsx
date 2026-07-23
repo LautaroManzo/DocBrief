@@ -65,7 +65,7 @@ export function InfoButton() {
 
               <a className="info-api-link" href={`${API_URL}/swagger`} target="_blank" rel="noopener noreferrer">
                 <span className="api-docs-icon">{"</>"}</span>
-                Ver documentación de la API
+                Api
               </a>
             </div>
           </div>
