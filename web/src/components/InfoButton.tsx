@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 function InfoIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -62,11 +60,6 @@ export function InfoButton() {
                   organizadas, términos clave y preguntas de repaso con respuestas.
                 </li>
               </ul>
-
-              <a className="info-api-link" href={`${API_URL}/swagger`} target="_blank" rel="noopener noreferrer">
-                <span className="api-docs-icon">{"</>"}</span>
-                Api
-              </a>
             </div>
           </div>
         </div>

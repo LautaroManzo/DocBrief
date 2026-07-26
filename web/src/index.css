@@ -308,6 +308,49 @@ main {
   color: var(--text-secondary);
 }
 
+.source-context-title {
+  justify-content: center;
+}
+
+.source-context-title .icon {
+  font-size: 18px;
+  color: var(--accent);
+  opacity: 1;
+  display: flex;
+}
+
+.source-context-title .label {
+  font-family: "Nunito", sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--text-primary);
+}
+
+.source-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.source-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.source-pill .icon {
+  font-size: 13px;
+}
+
 .dropzone {
   cursor: pointer;
   width: 100%;
@@ -796,30 +839,6 @@ textarea {
   margin-bottom: 0;
 }
 
-/* API docs link (dentro del modal de info) */
-.info-api-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-soft);
-  font-family: "Inter", sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary-2);
-  text-decoration: none;
-}
-
-.info-api-link:hover {
-  color: var(--accent);
-}
-
-.api-docs-icon {
-  font-family: ui-monospace, monospace;
-  color: var(--accent);
-}
 
 /* Mobile */
 @media (max-width: 640px) {

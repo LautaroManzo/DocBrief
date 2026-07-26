@@ -1,3 +1,4 @@
+import { ApiDocsButton } from "./ApiDocsButton";
 import { InfoButton } from "./InfoButton";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -8,6 +9,7 @@ export function WizardHeader() {
         Te lo <span>resumo</span>
       </span>
       <div className="card-header-actions">
+        <ApiDocsButton />
         <InfoButton />
         <ThemeToggle />
       </div>
