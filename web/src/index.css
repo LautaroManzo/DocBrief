@@ -63,6 +63,17 @@ main {
   padding: 24px;
 }
 
+@keyframes cardDropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .card {
   position: relative;
   width: min(94vw, 960px);
@@ -74,6 +85,7 @@ main {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  animation: cardDropIn 0.4s ease;
 }
 
 /* Card header */
@@ -112,6 +124,17 @@ main {
   box-sizing: border-box;
 }
 
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .view {
   flex: 1;
   display: flex;
@@ -121,6 +144,7 @@ main {
   gap: 22px;
   padding-top: 15%;
   text-align: center;
+  animation: fadeSlideIn 0.25s ease;
 }
 
 .view h1 {
@@ -156,6 +180,17 @@ main {
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.source-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+}
+
+.source-card:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .source-card.selected {
@@ -169,7 +204,7 @@ main {
 .source-card .label {
   font-family: "Inter", sans-serif;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text-primary);
 }
 
@@ -438,6 +473,25 @@ textarea {
 
 
 /* Buttons */
+.btn-primary,
+.btn-secondary,
+.btn-soft {
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.btn-primary:not(:disabled):hover,
+.btn-secondary:not(:disabled):hover,
+.btn-soft:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+.btn-primary:not(:disabled):active,
+.btn-secondary:not(:disabled):active,
+.btn-soft:not(:disabled):active {
+  transform: translateY(0) scale(0.97);
+}
+
 .btn-primary {
   font-family: "Nunito", sans-serif;
   font-weight: 700;
@@ -556,11 +610,21 @@ textarea {
   flex-shrink: 0;
 }
 
+@keyframes progressPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
 .progress-fill {
   height: 100%;
   background: var(--accent);
   border-radius: 100px;
   transition: width 0.3s ease;
+  animation: progressPulse 1.6s ease-in-out infinite;
 }
 
 /* Done view */
@@ -571,6 +635,7 @@ textarea {
   flex-direction: column;
   gap: 16px;
   text-align: left;
+  animation: fadeSlideIn 0.25s ease;
 }
 
 .done-header {
@@ -734,6 +799,26 @@ textarea {
   color: var(--text-secondary-2);
 }
 
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 .info-overlay {
   position: fixed;
   inset: 0;
@@ -743,6 +828,7 @@ textarea {
   justify-content: center;
   padding: 20px;
   z-index: 30;
+  animation: overlayFadeIn 0.15s ease;
 }
 
 .info-modal {
@@ -755,6 +841,7 @@ textarea {
   border-radius: 20px;
   box-shadow: var(--shadow-menu);
   text-align: left;
+  animation: modalPop 0.2s ease;
 }
 
 .info-modal-content {
@@ -886,10 +973,6 @@ textarea {
     font-size: 20px;
   }
 
-  .source-card .label {
-    font-size: 14px;
-  }
-
   .options-row {
     gap: 10px;
   }
@@ -938,3 +1021,14 @@ textarea {
   }
 }
 
+
+/* Respeta la preferencia del sistema de reducir animaciones */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
