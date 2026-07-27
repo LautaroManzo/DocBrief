@@ -196,7 +196,7 @@ function App() {
             />
           )}
 
-          {phase === "processing" && <ProcessingView title="Generando tu resumen…" />}
+          {phase === "processing" && <ProcessingView />}
 
           {phase === "error" && <ErrorView message={errorMessage} onRetry={retryFromError} />}
 
