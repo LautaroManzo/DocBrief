@@ -2,114 +2,115 @@
 
 ## Qué hace este proyecto
 API REST en .NET que resume PDFs, Word (.docx), texto plano, paginas web y videos de
-YouTube (por URL) usando IA via Semantic Kernel, con un frontend en React. El usuario elige el tipo de
-resumen (`SummaryMode`: "basico" o "estudio") e idioma de salida (es/en). No persiste
-nada — cada request genera el resumen y lo devuelve, sin historial.
+YouTube (por URL) usando IA via Semantic Kernel, con un frontend en React (wizard de
+3 pasos). El usuario elige el tipo de resumen (`SummaryMode`: "basico" o "estudio") e
+idioma de salida (es/en). Sin persistencia — cada request genera el resumen y lo
+devuelve, sin historial.
 
-Modos de resumen (ver SemanticKernelSummaryService, dos prompts distintos):
-- **Básico**: sintesis clara y concisa en 1-2 parrafos.
-- **Plan de estudio**: material de estudio extenso que aplica tecnicas de aprendizaje
-  (chunking en secciones, elaboracion con ejemplos, glosario de "Terminos clave" y
-  active recall con "Preguntas de repaso" + respuestas).
+Modos de resumen (ver SemanticKernelSummaryService):
+- **Básico**: sintesis de 1-2 parrafos, con titulo al inicio.
+- **Plan de estudio**: material extenso (chunking, elaboracion, "Terminos clave",
+  "Preguntas de repaso"). Incluye siempre un **mapa conceptual** (mermaid mindmap).
+- Los prompts piden no inventar grafias plausibles para nombres/terminos mal
+  transcriptos (comun en audio/video) — marcarlos como "[verificar: NOMBRE]".
 
-El repo/proyecto backend se llama **DocBrief**, pero el frontend se presenta al
-usuario como **"Te lo resumo"** (titulo de la pestana y branding visible).
+El repo se llama **DocBrief**, el frontend se presenta como **"Te lo resumo"**.
 
 ## Arquitectura
-Backend: Clean Architecture (Domain / Application / Infrastructure / API).
-Las dependencias apuntan hacia adentro. Infrastructure nunca en Domain.
-Frontend: proyecto React separado en `web/`, fuera de `src/` porque es otro
-ecosistema (Node/npm) — consume la API via HTTP.
+Clean Architecture (Domain / Application / Infrastructure / API), dependencias
+hacia adentro. Frontend React separado en `web/` (otro ecosistema, Node/npm),
+consume la API via HTTP.
+
+Solucion `DocBrief.slnx` en la raiz con todos los proyectos (`src/`, `tests/`,
+`web/web.esproj`) para abrir todo junto en Visual Studio.
 
 ## Convenciones
 - Toda lógica de negocio va en Application/UseCases
 - Los handlers usan MediatR (IRequestHandler)
 - Las interfaces de servicios externos van en Application/Interfaces
-- Los parsers de documentos se resuelven por extensión via IDocumentParserResolver
 - Nombres en inglés, comentarios en español
 - Commits en español, sin Co-Authored-By
 
 ## Stack
 ### Backend
-- .NET 10, C# 13
-- Semantic Kernel para IA — proveedor configurable via `AI:Provider` en appsettings
-  ("Ollama" para desarrollo local con llama3.2, "Gemini" con gemini-flash-lite-latest)
-- PdfPig para parsear PDFs, DocumentFormat.OpenXml para Word
-- HtmlAgilityPack para extraer texto de paginas web (IUrlContentFetcher).
-  Proteccion SSRF real: SsrfSafeHttpClientHandler valida la IP en el
-  ConnectCallback (momento exacto de conectar), no antes — asi cubre tanto
-  redirects (3xx a IPs internas) como DNS rebinding, no solo la URL inicial
-- YoutubeExplode para transcripciones de YouTube (IYouTubeTranscriptFetcher).
-  El endpoint /api/summary/url detecta automaticamente si el link es de
-  YouTube y usa la transcripcion en vez del HTML de la pagina. No hay API
-  oficial para bajar subtitulos de videos ajenos — YoutubeExplode se
-  mantiene activamente para seguirle el paso a los cambios de YouTube
-  (un intento propio de scraping directo se rompio en la primera prueba)
-- Limite de texto pegado: 10.000 caracteres (validado en front y back)
-- Errores de parseo (PDF/DOCX corruptos) devuelven 400 con mensaje claro,
-  no 500 con stack trace
-- MediatR para CQRS
-- Swashbuckle (Swagger) para documentación interactiva — habilitado siempre,
-  incluso en producción (link "API docs" visible en el frontend)
-- Rate limiting nativo de .NET: 10 requests/minuto + 10/dia por IP (en memoria,
-  se resetea si la API reinicia)
-- CORS: en desarrollo acepta cualquier origen `localhost` (Vite cambia de puerto);
-  en produccion exige `Cors:AllowedOrigin` configurado
-- Sin base de datos
+- .NET 10, C# 13, MediatR para CQRS
+- Semantic Kernel — proveedor via `AI:Provider` ("Ollama" local con llama3.2,
+  "Gemini" con gemini-flash-lite-latest en produccion)
+- PdfPig (PDF), DocumentFormat.OpenXml (Word), HtmlAgilityPack (paginas web,
+  texto + `<title>`)
+- SSRF: `SsrfSafeHttpClientHandler` valida la IP en el `ConnectCallback` (al
+  conectar, no antes) — cubre redirects y DNS rebinding
+- YouTube: metodo principal es la API de **Supadata** (`Supadata:ApiKey`) —
+  YouTube bloquea el scraping directo por IP de datacenter, no arreglable de
+  nuestro lado. Sin la key cae a YoutubeExplode (sirve en local). Titulo del
+  video via oEmbed
+- `app.UseForwardedHeaders()`: necesario para que el rate limiter (por IP) vea
+  la IP real del cliente detras del proxy de Render, no la del proxy
+  para todos
+- Limite de texto pegado: 10.000 caracteres (front y back)
+- Rate limiting nativo: 10/min + 10/dia por IP, en memoria
+- CORS: cualquier `localhost` en dev, `Cors:AllowedOrigin` exacto en produccion
+- Swagger siempre habilitado (tambien en produccion), sin base de datos
 
 ### Frontend (web/)
-- React + Vite + TypeScript
-- Sin librerías de UI — componentes y CSS propios (paleta oklch, fuentes Nunito/Inter)
-- jsPDF para exportar el resumen a PDF con formato (títulos, listas, negritas)
-- Dark/light mode con toggle propio (localStorage)
-- Layout responsive (mobile-first en breakpoints clave) — pendiente pulir
-  detalles visuales en mobile, reportados como poco prolijos
+- React + Vite + TypeScript, sin librerías de UI (CSS propio)
+- **Wizard de 3 pasos**: step1 origen+opciones → step2 cargar contenido → step3
+  procesando/resultado/error (`App.tsx`, `Phase` en `types.ts`). El submit real
+  se dispara al confirmar en step2, no al elegir el archivo
+- Paleta oklch (indigo/violeta) + Nunito/Inter, tokens en `index.css`
+- **Mapa conceptual**: se renderiza con `mermaid` (`ConceptMapSection.tsx`); si
+  viene vacio o invalido, no se muestra nada (ni el titulo), no un error
+- PDF (`utils/download.ts`, jsPDF): el mapa conceptual se rasteriza a PNG via
+  canvas usando un data URI (blob URL rompe por los `<foreignObject>` de
+  mermaid) y va en pagina propia
+- `sourceTitle` (del backend) reemplaza la URL cruda en pantalla y nombra el PDF
+- Dark/light mode (localStorage), animaciones CSS sutiles (respetan
+  `prefers-reduced-motion`), responsive mobile-first
 
 ## Estructura
 ```
+DocBrief.slnx
 src/
-  DocBrief.Domain/          → Vacío por ahora (sin entidades persistentes)
-  DocBrief.Application/     → Interfaces, UseCases, Commands/Handlers
-  DocBrief.Infrastructure/  → Parsers (PdfPig, OpenXml), Web (UrlContentFetcher),
-                               IA (Semantic Kernel)
-  DocBrief.API/              → Controllers, Program.cs, Swagger
+  DocBrief.Domain/           → Vacío (sin entidades persistentes)
+  DocBrief.Application/      → Interfaces, UseCases
+  DocBrief.Infrastructure/   → Parsers, Web (fetchers), IA (Semantic Kernel)
+  DocBrief.API/               → Controllers, Program.cs, Swagger
 tests/
-  DocBrief.TestConsole/     → Test manual de parsers
+  DocBrief.TestConsole/           → Consola manual (parsers)
+  DocBrief.Application.Tests/     → xUnit + Moq (SummarizeDocumentHandler)
+  DocBrief.Infrastructure.Tests/  → xUnit (SSRF, deteccion de URLs de YouTube)
 web/
-  src/components/           → IdleView, ProcessingView, DoneView, ErrorView
-                               + Select, SummaryContent, ThemeToggle, ApiDocsLink
-  src/services/api.ts       → Llamadas HTTP a la API
-  src/utils/                → markdown.ts (parser compartido), download.ts (jsPDF)
+  src/components/            → WizardHeader, StepSource, StepContent,
+                                ProcessingView, DoneView, ErrorView,
+                                SummaryContent, ConceptMapSection, etc.
+  src/services/api.ts        → Llamadas HTTP
+  src/utils/                 → markdown.ts, download.ts, mermaidRender.ts
 ```
 
 ## Comandos útiles
-### Backend
 ```
-dotnet build                              # compilar
+dotnet build DocBrief.slnx                # compilar todo
 dotnet run --project src/DocBrief.API     # levantar la API (Swagger en /swagger)
-dotnet test                               # tests
-```
+dotnet test DocBrief.slnx                 # correr los tests
 
-### Frontend
-```
-cd web
-npm run dev                               # levantar en localhost:5173
+cd web && npm run dev                     # frontend en localhost:5173
 ```
 
 ## Ollama (desarrollo local)
 ```
-ollama serve          # si no esta corriendo como servicio
-ollama list            # verificar que llama3.2 este disponible
+ollama serve
+ollama list   # verificar que llama3.2 este disponible
 ```
 
 ## Deploy (produccion)
 - **Backend**: Render (Docker) — https://te-lo-resumo.onrender.com
-  - `Dockerfile` en la raiz del repo, build multi-stage
-  - Escucha en el puerto de la variable `PORT` si esta seteada
-  - Variables de entorno en Render: `AI__Provider=Gemini`,
-    `Gemini__ApiKey=<key>`, `Cors__AllowedOrigin=https://te-lo-resumo.vercel.app`
-  - Free tier: el servicio "duerme" tras inactividad, la primera
-    request tras un rato inactivo tarda ~30-50s en responder
+  - Variables: `AI__Provider=Gemini`, `Gemini__ApiKey`, `Cors__AllowedOrigin`,
+    `Supadata__ApiKey`
+  - Free tier: se duerme tras inactividad, primera request ~30-50s
 - **Frontend**: Vercel — https://te-lo-resumo.vercel.app
-  - Root Directory: `web`
-  - Variable de entorno: `VITE_API_URL=https://te-lo-resumo.onrender.com`
+  - Root Directory: `web`, variable `VITE_API_URL`
+
+## Limitaciones conocidas
+- YouTube: Supadata resuelve la mayoria de los casos pero no el 100% (depende
+  de que YouTube exponga subtitulos). Sin esa key, YoutubeExplode puede fallar
+  incluso desde IP residencial para algunos videos puntuales.

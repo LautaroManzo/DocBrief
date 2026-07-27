@@ -7,6 +7,8 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DocBrief.TestConsole/DocBrief.TestConsole.csproj" />
+    <Project Path="tests/DocBrief.Application.Tests/DocBrief.Application.Tests.csproj" />
+    <Project Path="tests/DocBrief.Infrastructure.Tests/DocBrief.Infrastructure.Tests.csproj" />
   </Folder>
   <Project Path="web/web.esproj">
     <Build />
