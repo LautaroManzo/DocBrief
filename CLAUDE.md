@@ -4,7 +4,7 @@
 API REST en .NET que resume PDFs, Word (.docx), texto plano, paginas web y videos de
 YouTube (por URL) usando IA via Semantic Kernel, con un frontend en React (wizard de
 3 pasos). El usuario elige el tipo de resumen (`SummaryMode`: "basico" o "estudio") e
-idioma de salida (es/en). Sin persistencia — cada request genera el resumen y lo
+idioma de salida (es/en/pt, default es). Sin persistencia — cada request genera el resumen y lo
 devuelve, sin historial.
 
 Modos de resumen (ver SemanticKernelSummaryService):

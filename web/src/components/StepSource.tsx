@@ -9,6 +9,7 @@ const SUMMARY_MODE_OPTIONS = [
 const OUTPUT_LANGUAGE_OPTIONS = [
   { value: "es", label: "Español" },
   { value: "en", label: "English" },
+  { value: "pt", label: "Português" },
 ];
 
 const SOURCE_OPTIONS: { mode: InputMode; icon: string; label: string }[] = [

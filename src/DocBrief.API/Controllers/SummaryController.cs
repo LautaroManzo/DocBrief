@@ -29,7 +29,7 @@ public class SummaryController : ControllerBase
     /// </summary>
     /// <param name="file">Archivo a resumir (PDF o DOCX, maximo 10 MB).</param>
     /// <param name="summaryMode">Modo de resumen: "basico" o "estudio".</param>
-    /// <param name="outputLanguage">Idioma del resumen: "es" o "en".</param>
+    /// <param name="outputLanguage">Idioma del resumen: "es", "en" o "pt".</param>
     /// <param name="includeConceptMap">Si se incluye un mapa conceptual (solo aplica en modo "estudio").</param>
     /// <response code="200">Resumen generado correctamente.</response>
     /// <response code="400">El archivo es invalido, no tiene un formato soportado o supera los 10 MB.</response>
@@ -144,7 +144,7 @@ public class SummaryController : ControllerBase
 /// </summary>
 /// <param name="Text">Texto a resumir.</param>
 /// <param name="SummaryMode">Modo de resumen: "basico" o "estudio". Por defecto "basico".</param>
-/// <param name="OutputLanguage">Idioma del resumen: "es" o "en". Por defecto "es".</param>
+/// <param name="OutputLanguage">Idioma del resumen: "es", "en" o "pt". Por defecto "es".</param>
 /// <param name="IncludeConceptMap">Si se incluye un mapa conceptual (solo aplica en modo "estudio").</param>
 public record TextRequest(string Text, string? SummaryMode, string? OutputLanguage, bool? IncludeConceptMap = null);
 
@@ -153,6 +153,6 @@ public record TextRequest(string Text, string? SummaryMode, string? OutputLangua
 /// </summary>
 /// <param name="Url">URL de la pagina a resumir.</param>
 /// <param name="SummaryMode">Modo de resumen: "basico" o "estudio". Por defecto "basico".</param>
-/// <param name="OutputLanguage">Idioma del resumen: "es" o "en". Por defecto "es".</param>
+/// <param name="OutputLanguage">Idioma del resumen: "es", "en" o "pt". Por defecto "es".</param>
 /// <param name="IncludeConceptMap">Si se incluye un mapa conceptual (solo aplica en modo "estudio").</param>
 public record UrlRequest(string Url, string? SummaryMode, string? OutputLanguage, bool? IncludeConceptMap = null);

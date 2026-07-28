@@ -35,7 +35,7 @@ public class UrlContentFetcher : IUrlContentFetcher
         document.LoadHtml(html);
 
         var title = document.DocumentNode.SelectSingleNode("//title")?.InnerText;
-        title = string.IsNullOrWhiteSpace(title) ? null : WebUtility.HtmlDecode(title).Trim();
+        title = string.IsNullOrWhiteSpace(title) ? null : CleanTitle(WebUtility.HtmlDecode(title).Trim());
 
         var removable = document.DocumentNode.SelectNodes(string.Join("|", RemovableTags.Select(t => $"//{t}")));
         if (removable is not null)
@@ -50,6 +50,19 @@ public class UrlContentFetcher : IUrlContentFetcher
         text = Regex.Replace(text, @"\s+", " ").Trim();
 
         return new UrlContent(text, title);
+    }
+
+    /// <summary>
+    /// Los &lt;title&gt; suelen venir como "Articulo | NombreDelSitio" o similar.
+    /// Se queda con el segmento mas largo (el titulo real) y descarta el nombre del sitio.
+    /// </summary>
+    private static string CleanTitle(string title)
+    {
+        var parts = title.Split(new[] { " | ", " – ", " — ", " - ", " · ", " » " }, StringSplitOptions.RemoveEmptyEntries);
+
+        return parts.Length > 1
+            ? parts.OrderByDescending(p => p.Length).First().Trim()
+            : title;
     }
 
     private static Uri ValidateUrl(string url)

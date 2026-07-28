@@ -10,7 +10,8 @@ public class SemanticKernelSummaryService : ISummaryService
     private static readonly Dictionary<string, string> LanguageNames = new()
     {
         ["es"] = "español",
-        ["en"] = "ingles"
+        ["en"] = "ingles",
+        ["pt"] = "portugues"
     };
 
     // Compartido entre los dos modos: evita que el modelo "prolijice" nombres/terminos

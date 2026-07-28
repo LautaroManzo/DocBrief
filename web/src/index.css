@@ -147,6 +147,11 @@ main {
   animation: fadeSlideIn 0.25s ease;
 }
 
+.view.view-centered {
+  justify-content: center;
+  padding-top: 0;
+}
+
 .view h1 {
   font-family: "Nunito", sans-serif;
   font-weight: 800;
@@ -407,8 +412,25 @@ main {
   background: var(--soft-bg);
 }
 
+.dropzone.has-file {
+  position: relative;
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--dropzone-bg);
+}
+
 .dropzone p {
   margin: 0;
+}
+
+.dropzone .dz-icon {
+  color: var(--accent);
+  line-height: 0;
+}
+
+.dropzone.has-file .dz-icon svg {
+  width: 30px;
+  height: 30px;
 }
 
 .dropzone .dz-title {
@@ -416,12 +438,46 @@ main {
   font-weight: 700;
   font-size: 15px;
   color: var(--text-primary);
+  max-width: 90%;
+  overflow-wrap: break-word;
+  text-align: center;
+}
+
+.dropzone.has-file .dz-title {
+  font-size: 17px;
 }
 
 .dropzone .dz-subtitle {
   font-family: "Inter", sans-serif;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.dropzone.has-file .dz-subtitle {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.dz-remove {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: var(--soft-bg);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.dz-remove:hover {
+  color: var(--text-primary);
+  background: var(--border-soft);
 }
 
 input[type="file"] {
@@ -606,7 +662,7 @@ textarea {
   height: 4px;
   background: var(--border-soft);
   overflow: hidden;
-  margin: 0;
+  margin: 0 0 12px;
   flex-shrink: 0;
 }
 
@@ -667,6 +723,11 @@ textarea {
   font-weight: 600;
   font-size: 13px;
   color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .done-header-file .meta {
@@ -928,6 +989,34 @@ textarea {
 }
 
 
+/* Pantallas de notebook/desktop en adelante: el card usa poco su espacio en
+   proporción al tamaño de letra, así que se escala progresivamente. El alto y
+   ancho máximos se dividen por el mismo factor para que, ya multiplicados por
+   el zoom, el card mantenga el mismo margen respecto al viewport. */
+@media (min-width: 900px) {
+  .card {
+    zoom: 1.08;
+    width: min(calc(94vw / 1.08), calc(960px / 1.08));
+    height: min(calc(90vh / 1.08), calc(900px / 1.08));
+  }
+}
+
+@media (min-width: 1600px) {
+  .card {
+    zoom: 1.2;
+    width: min(calc(94vw / 1.2), calc(960px / 1.2));
+    height: min(calc(90vh / 1.2), calc(900px / 1.2));
+  }
+}
+
+@media (min-width: 2200px) {
+  .card {
+    zoom: 1.35;
+    width: min(calc(94vw / 1.35), calc(960px / 1.35));
+    height: min(calc(90vh / 1.35), calc(900px / 1.35));
+  }
+}
+
 /* Mobile */
 @media (max-width: 640px) {
   main {
@@ -944,7 +1033,7 @@ textarea {
   }
 
   .card-header {
-    padding: 14px 18px 10px;
+    padding: 14px 20px 10px;
   }
 
   .card-body {
@@ -953,6 +1042,8 @@ textarea {
 
   .view {
     gap: 20px;
+    justify-content: center;
+    padding-top: 0;
   }
 
   .view h1 {

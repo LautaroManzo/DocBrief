@@ -42,6 +42,30 @@ function UploadIcon() {
   );
 }
 
+function CheckCircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 12.5l2.5 2.5 4.5-5.5" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6L6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
+function formatFileSize(bytes: number): string {
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(0)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
 function LinkIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -112,7 +136,7 @@ export function StepContent({
 
       {inputMode === "file" && (
         <div
-          className={`dropzone${isDragOver ? " dragover" : ""}`}
+          className={`dropzone${isDragOver ? " dragover" : ""}${selectedFile ? " has-file" : ""}`}
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault();
@@ -121,8 +145,25 @@ export function StepContent({
           onDragLeave={() => setIsDragOver(false)}
           onDrop={handleDrop}
         >
+          {selectedFile && (
+            <button
+              type="button"
+              className="dz-remove"
+              aria-label="Quitar archivo"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectedFileChange(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+            >
+              <XIcon />
+            </button>
+          )}
+          <span className="dz-icon">{selectedFile ? <CheckCircleIcon /> : null}</span>
           <p className="dz-title">{selectedFile ? selectedFile.name : "Hacé clic o soltalo acá"}</p>
-          <p className="dz-subtitle">PDF, DOCX — máx. 10 MB</p>
+          <p className="dz-subtitle">
+            {selectedFile ? formatFileSize(selectedFile.size) : "PDF, DOCX — máx. 10 MB"}
+          </p>
           <input
             ref={fileInputRef}
             type="file"

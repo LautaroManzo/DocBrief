@@ -14,7 +14,7 @@ export function ProcessingView() {
   }, []);
 
   return (
-    <div className="view">
+    <div className="view view-centered">
       <div className="spinner">
         <div className="spinner-track" />
         <div className="spinner-arc" />

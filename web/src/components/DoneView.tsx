@@ -15,7 +15,7 @@ export function DoneView({ summary, sourceName, sourceMeta, onReset }: DoneViewP
         <div className="done-header-file">
           <div className="done-header-icon" />
           <div>
-            <p className="name">{sourceName}</p>
+            <p className="name" title={sourceName}>{sourceName}</p>
             <p className="meta">{sourceMeta}</p>
           </div>
         </div>
