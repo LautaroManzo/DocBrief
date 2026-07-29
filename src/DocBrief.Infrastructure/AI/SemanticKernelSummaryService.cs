@@ -14,6 +14,16 @@ public class SemanticKernelSummaryService : ISummaryService
         ["pt"] = "portugues"
     };
 
+    // Los subtitulos estructurales tambien se traducen — si quedan en español el modelo
+    // tiende a "contagiar" el resto de esa seccion (sobre todo las preguntas) al español,
+    // aunque el resto del prompt pida otro idioma.
+    private static readonly Dictionary<string, (string KeyTerms, string ConceptMap, string Questions)> HeadingTranslations = new()
+    {
+        ["es"] = ("Términos clave", "Mapa conceptual", "Preguntas de repaso"),
+        ["en"] = ("Key terms", "Concept map", "Review questions"),
+        ["pt"] = ("Termos-chave", "Mapa conceitual", "Perguntas de revisão")
+    };
+
     // Compartido entre los dos modos: evita que el modelo "prolijice" nombres/terminos
     // mal transcriptos (comun en audio de video) inventando una grafia plausible.
     private const string FidelityInstructions = """
@@ -43,7 +53,7 @@ public class SemanticKernelSummaryService : ISummaryService
         var languageName = LanguageNames.GetValueOrDefault(outputLanguage, LanguageNames["es"]);
 
         var prompt = summaryMode == "estudio"
-            ? BuildStudyPrompt(languageName, includeConceptMap)
+            ? BuildStudyPrompt(languageName, outputLanguage, includeConceptMap)
             : BuildBasicPrompt(languageName);
 
         var function = _kernel.CreateFunctionFromPrompt(prompt);
@@ -93,12 +103,14 @@ public class SemanticKernelSummaryService : ISummaryService
 
     // Modo "Plan de estudio": material de estudio completo aplicando tecnicas de aprendizaje
     // (chunking, elaboracion, glosario y active recall).
-    private static string BuildStudyPrompt(string languageName, bool includeConceptMap)
+    private static string BuildStudyPrompt(string languageName, string outputLanguage, bool includeConceptMap)
     {
-        var conceptMapInstructions = includeConceptMap
-            ? """
+        var headings = HeadingTranslations.GetValueOrDefault(outputLanguage, HeadingTranslations["es"]);
 
-                4. Una seccion "## Mapa conceptual" con un diagrama mermaid tipo mindmap
+        var conceptMapInstructions = includeConceptMap
+            ? $$"""
+
+                4. Una seccion "## {{headings.ConceptMap}}" con un diagrama mermaid tipo mindmap
                    de los temas principales y como se relacionan. Formato exacto:
                    - Un bloque de codigo que empieza con ```mermaid y termina con ```.
                    - Adentro, primera linea "mindmap".
@@ -147,13 +159,15 @@ public class SemanticKernelSummaryService : ISummaryService
                los mezcles ni los generalices solo para resumir mas rapido. Resalta los
                conceptos importantes con **negrita** y usa listas con "- " cuando ayude a la
                lectura.
-            3. Una seccion "## Terminos clave" con los conceptos mas importantes y su
+            3. Una seccion "## {KEY_TERMS_HEADING}" con los conceptos mas importantes y su
                definicion breve, en formato "- **Termino**: definicion".
             {CONCEPT_MAP}
-            Por ultimo, una seccion "## Preguntas de repaso" con 4-5 preguntas para
+            Por ultimo, una seccion "## {QUESTIONS_HEADING}" con 4-5 preguntas para
                autoevaluarse, cada una seguida de su respuesta. Formato por pregunta: la
                pregunta en negrita "**1. ¿Pregunta?**", luego una linea en blanco, y despues
                la respuesta. Dejá una linea en blanco entre cada par de pregunta y respuesta.
+               Importante: las preguntas y las respuestas van en {LANGUAGE}, igual que el
+               resto del documento — no cambies de idioma en esta seccion.
 
             No uses tablas ni elementos de Markdown fuera de los mencionados (fuera del
             bloque mermaid del mapa conceptual, si se pidio).
@@ -165,6 +179,8 @@ public class SemanticKernelSummaryService : ISummaryService
             """
             .Replace("{LANGUAGE}", languageName)
             .Replace("{FIDELITY}", FidelityInstructions)
-            .Replace("{CONCEPT_MAP}", conceptMapInstructions);
+            .Replace("{CONCEPT_MAP}", conceptMapInstructions)
+            .Replace("{KEY_TERMS_HEADING}", headings.KeyTerms)
+            .Replace("{QUESTIONS_HEADING}", headings.Questions);
     }
 }

@@ -110,6 +110,7 @@ async function generatePdf(content: string, filename: string) {
   }
 
   const blocks = parseSummaryMarkdown(content);
+  const lastHeadingIndex = blocks.reduce((last, b, i) => (b.type === "heading" ? i : last), -1);
 
   for (let index = 0; index < blocks.length; index++) {
     const block = blocks[index];
@@ -120,7 +121,6 @@ async function generatePdf(content: string, filename: string) {
     }
 
     if (block.type === "heading") {
-      const headingText = block.runs.map((run) => run.text).join("");
       const nextBlock = blocks[index + 1];
 
       if (nextBlock?.type === "mermaid") {
@@ -140,7 +140,7 @@ async function generatePdf(content: string, filename: string) {
         continue;
       }
 
-      const isQuestionsSection = /preguntas de repaso/i.test(headingText);
+      const isQuestionsSection = index === lastHeadingIndex;
       if (isQuestionsSection && y > MARGIN_TOP) {
         doc.addPage();
         y = MARGIN_TOP;
