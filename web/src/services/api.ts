@@ -87,3 +87,16 @@ export async function summarizeUrl(url: string, options: SummaryOptions): Promis
 
   return response.json();
 }
+
+export async function fixConceptMap(code: string, error: string): Promise<string> {
+  const response = await fetch(`${API_URL}/api/summary/fix-concept-map`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, error }),
+  });
+
+  await assertOk(response);
+
+  const result: { code: string } = await response.json();
+  return result.code;
+}

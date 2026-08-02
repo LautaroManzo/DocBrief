@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using DocBrief.Application.Interfaces;
 using Microsoft.SemanticKernel;
 
@@ -62,6 +63,47 @@ public class SemanticKernelSummaryService : ISummaryService
         return result.GetValue<string>() ?? string.Empty;
     }
 
+    // Se llama cuando el mapa conceptual generado no pudo renderizarse (sintaxis
+    // mermaid invalida). Le pasamos el error real de mermaid al modelo para que
+    // corrija el formato sin tocar el contenido/terminos del diagrama.
+    public async Task<string> FixConceptMapAsync(string brokenCode, string errorMessage)
+    {
+        var prompt = $$"""
+            Sos un experto en la sintaxis de diagramas mermaid tipo mindmap. El siguiente
+            diagrama fallo al renderizar con este error de mermaid:
+
+            {{errorMessage}}
+
+            Diagrama con el error:
+            ```mermaid
+            {{brokenCode}}
+            ```
+
+            Corregi unicamente los problemas de sintaxis (indentacion, lineas en blanco,
+            simbolos invalidos en los textos de los nodos como parentesis, comillas, dos
+            puntos o negrita, etc.). No cambies el contenido, los terminos ni la
+            estructura de temas/subtemas — es el mismo diagrama, solo con la sintaxis
+            arreglada. Los dobles parentesis "((...))" son exclusivos del nodo raiz.
+
+            Respondé unicamente con el bloque de codigo corregido, empezando con
+            ```mermaid y terminando con ```. No agregues explicaciones antes ni despues.
+            """;
+
+        var function = _kernel.CreateFunctionFromPrompt(prompt);
+        var result = await _kernel.InvokeAsync(function);
+        var response = result.GetValue<string>() ?? string.Empty;
+
+        return ExtractMermaidCode(response, brokenCode);
+    }
+
+    private static string ExtractMermaidCode(string response, string fallback)
+    {
+        var match = Regex.Match(response, "```mermaid\\s*(.*?)```", RegexOptions.Singleline);
+        var code = match.Success ? match.Groups[1].Value.Trim() : response.Trim();
+
+        return string.IsNullOrWhiteSpace(code) ? fallback : code;
+    }
+
     // Modo "Básico": sintesis clara y concisa del texto.
     private static string BuildBasicPrompt(string languageName)
     {
@@ -111,17 +153,36 @@ public class SemanticKernelSummaryService : ISummaryService
             ? $$"""
 
                 4. Una seccion "## {{headings.ConceptMap}}" con un diagrama mermaid tipo mindmap
-                   de los temas principales y como se relacionan. Formato exacto:
+                   de los temas principales y como se relacionan. Formato exacto, sin desviarte:
                    - Un bloque de codigo que empieza con ```mermaid y termina con ```.
-                   - Adentro, primera linea "mindmap".
+                   - Adentro, primera linea "mindmap", sin nada mas en esa linea.
                    - Segunda linea con el nodo raiz: dos espacios de indentacion, luego
-                     root((Tema principal)).
+                     root((Tema principal)). Los dobles parentesis son EXCLUSIVOS del nodo
+                     raiz, ningun otro nodo los lleva.
                    - Debajo, los subtemas indentados con 2 espacios mas por cada nivel
-                     (maximo 3 niveles de profundidad).
-                   - Los textos de los nodos deben ser cortos (2-5 palabras), sin parentesis,
-                     comillas, dos puntos ni **negrita** adentro, porque rompen el diagrama.
+                     (maximo 3 niveles de profundidad), usando siempre multiplos exactos de
+                     2 espacios (nunca tabs, nunca 1 o 3 espacios).
+                   - No dejes lineas en blanco dentro del bloque mermaid — ni entre nodos ni
+                     antes del cierre ```. Una linea vacia en el medio rompe el diagrama.
+                   - Los textos de los nodos deben ser cortos (2-5 palabras), texto plano sin
+                     ningun simbolo: nada de parentesis, comillas, dos puntos, guiones,
+                     numeros de lista ni **negrita**. Estos simbolos rompen el diagrama.
                    - Usa exactamente los mismos terminos que aparecen en el cuerpo del texto,
                      no generes variantes ni sinonimos.
+
+                   Ejemplo de estructura valida (con otro tema, solo para el formato):
+                   ```mermaid
+                   mindmap
+                     root((Sistema nervioso))
+                       Neuronas
+                         Dendritas
+                         Axon
+                       Sinapsis
+                         Neurotransmisores
+                       Sistema nervioso central
+                         Cerebro
+                         Medula espinal
+                   ```
 
                 """
             : "\n";

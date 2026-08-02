@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fixConceptMap } from "../services/api";
 import type { TextRun } from "../utils/markdown";
 import { isDarkTheme, renderMermaidSvg } from "../utils/mermaidRender";
 
@@ -8,7 +9,8 @@ interface ConceptMapSectionProps {
 }
 
 // Muestra el titulo y el diagrama juntos, o nada, si el modelo no genero un
-// mapa conceptual valido (bloque vacio o mermaid invalido que falla al renderizar).
+// mapa conceptual valido (bloque vacio, o mermaid invalido incluso despues de
+// intentar corregirlo una vez con el error real de mermaid).
 export function ConceptMapSection({ headingRuns, code }: ConceptMapSectionProps) {
   const [svg, setSvg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -21,13 +23,25 @@ export function ConceptMapSection({ headingRuns, code }: ConceptMapSectionProps)
       return;
     }
 
-    renderMermaidSvg(code, isDarkTheme())
-      .then((result) => {
+    async function render() {
+      try {
+        const result = await renderMermaidSvg(code, isDarkTheme());
         if (!cancelled) setSvg(result);
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
+        return;
+      } catch (err) {
+        if (cancelled) return;
+
+        try {
+          const fixedCode = await fixConceptMap(code, err instanceof Error ? err.message : String(err));
+          const result = await renderMermaidSvg(fixedCode, isDarkTheme());
+          if (!cancelled) setSvg(result);
+        } catch {
+          if (!cancelled) setFailed(true);
+        }
+      }
+    }
+
+    render();
 
     return () => {
       cancelled = true;

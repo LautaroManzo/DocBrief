@@ -24,15 +24,31 @@ export function isDarkTheme() {
   return document.documentElement.dataset.theme === "dark";
 }
 
+// El modelo a veces deja lineas en blanco en medio del mindmap o espacios de
+// mas al final de linea, algo que mermaid no tolera aunque el resto del
+// diagrama sea valido. Sacarlos no cambia un diagrama ya correcto, pero
+// salva a varios que fallarian solo por eso.
+function sanitizeMindmapCode(code: string): string {
+  return code
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0)
+    .join("\n");
+}
+
 export async function renderMermaidSvg(code: string, isDark: boolean): Promise<string> {
   const mermaid = (await import("mermaid")).default;
   mermaid.initialize({
     startOnLoad: false,
     theme: "base",
     themeVariables: isDark ? DARK_THEME_VARIABLES : LIGHT_THEME_VARIABLES,
+    // Sin esto, ante un diagrama invalido mermaid dibuja el error (icono de
+    // bomba) directo en el DOM ademas de rechazar la promesa — quedaba visible
+    // aunque ConceptMapSection atrapa el error y no renderiza nada por su lado.
+    suppressErrorRendering: true,
   });
   const id = `mermaid-${Math.random().toString(36).slice(2)}`;
-  const { svg } = await mermaid.render(id, code);
+  const { svg } = await mermaid.render(id, sanitizeMindmapCode(code));
   return svg;
 }
 

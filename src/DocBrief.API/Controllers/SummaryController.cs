@@ -1,3 +1,4 @@
+using DocBrief.Application.UseCases.FixConceptMap;
 using DocBrief.Application.UseCases.SummarizeDocument;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -137,6 +138,26 @@ public class SummaryController : ControllerBase
             return BadRequest("No se pudo acceder a esa URL.");
         }
     }
+
+    /// <summary>
+    /// Reintenta corregir la sintaxis de un mapa conceptual (mermaid) que fallo al
+    /// renderizar en el navegador, preservando el contenido del diagrama.
+    /// </summary>
+    /// <param name="request">Codigo mermaid que fallo y el error devuelto por mermaid.</param>
+    /// <response code="200">Diagrama corregido.</response>
+    /// <response code="400">Falta el codigo o el error.</response>
+    [HttpPost("fix-concept-map")]
+    [ProducesResponseType(typeof(FixConceptMapResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> FixConceptMap([FromBody] FixConceptMapRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Error))
+            return BadRequest("Se requiere el codigo y el error del diagrama.");
+
+        var result = await _mediator.Send(new FixConceptMapCommand(request.Code, request.Error));
+
+        return Ok(result);
+    }
 }
 
 /// <summary>
@@ -156,3 +177,10 @@ public record TextRequest(string Text, string? SummaryMode, string? OutputLangua
 /// <param name="OutputLanguage">Idioma del resumen: "es", "en" o "pt". Por defecto "es".</param>
 /// <param name="IncludeConceptMap">Si se incluye un mapa conceptual (solo aplica en modo "estudio").</param>
 public record UrlRequest(string Url, string? SummaryMode, string? OutputLanguage, bool? IncludeConceptMap = null);
+
+/// <summary>
+/// Datos para reintentar un mapa conceptual que fallo al renderizar.
+/// </summary>
+/// <param name="Code">Codigo mermaid que fallo.</param>
+/// <param name="Error">Mensaje de error devuelto por mermaid al intentar renderizarlo.</param>
+public record FixConceptMapRequest(string Code, string Error);
