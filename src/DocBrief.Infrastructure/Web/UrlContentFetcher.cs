@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Text.RegularExpressions;
 using DocBrief.Application.Interfaces;
 using HtmlAgilityPack;
@@ -11,6 +12,8 @@ public class UrlContentFetcher : IUrlContentFetcher
     private const long MaxContentLengthBytes = 5 * 1024 * 1024;
 
     private static readonly string[] RemovableTags = { "script", "style", "nav", "header", "footer", "noscript", "svg" };
+
+    private static int _encodingProviderRegistered;
 
     private readonly HttpClient _httpClient;
 
@@ -29,7 +32,8 @@ public class UrlContentFetcher : IUrlContentFetcher
         if (response.Content.Headers.ContentLength is > MaxContentLengthBytes)
             throw new InvalidOperationException("La pagina supera el limite de tamano permitido.");
 
-        var html = await response.Content.ReadAsStringAsync();
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        var html = DecodeHtml(bytes, response.Content.Headers.ContentType?.CharSet);
 
         var document = new HtmlDocument();
         document.LoadHtml(html);
@@ -50,6 +54,48 @@ public class UrlContentFetcher : IUrlContentFetcher
         text = Regex.Replace(text, @"\s+", " ").Trim();
 
         return new UrlContent(text, title);
+    }
+
+    /// <summary>
+    /// HttpClient solo mira el charset del header Content-Type, pero muchas paginas lo
+    /// declaran unicamente en un &lt;meta charset&gt; dentro del HTML (o lo declaran mal
+    /// en el header). Sin esto, paginas en Windows-1252/ISO-8859-1 salen con tildes
+    /// corruptas. Prioridad: header -> meta tag -> UTF-8 por defecto.
+    /// </summary>
+    private static string DecodeHtml(byte[] bytes, string? headerCharset)
+    {
+        var encoding = ResolveEncoding(headerCharset) ?? ResolveEncoding(SniffMetaCharset(bytes)) ?? Encoding.UTF8;
+        return encoding.GetString(bytes);
+    }
+
+    private static Encoding? ResolveEncoding(string? charset)
+    {
+        if (string.IsNullOrWhiteSpace(charset)) return null;
+
+        try
+        {
+            if (Interlocked.Exchange(ref _encodingProviderRegistered, 1) == 0)
+            {
+                Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            }
+
+            return Encoding.GetEncoding(charset.Trim().Trim('"', '\''));
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static string? SniffMetaCharset(byte[] bytes)
+    {
+        // El charset se declara siempre en ASCII, asi que decodificar los primeros bytes
+        // como Latin1 (mapeo 1 a 1 byte->char) es seguro para buscar la declaracion,
+        // sea cual sea la codificacion real del resto del documento.
+        var head = Encoding.Latin1.GetString(bytes, 0, Math.Min(bytes.Length, 2048));
+        var match = Regex.Match(head, @"charset\s*=\s*[""']?([a-zA-Z0-9_\-]+)", RegexOptions.IgnoreCase);
+
+        return match.Success ? match.Groups[1].Value : null;
     }
 
     /// <summary>
